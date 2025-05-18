@@ -30,8 +30,8 @@ using namespace SDK;
 static auto ImageBase = InSDKUtils::GetImageBase();
 
 static UNetDriver* (*CreateNetDriver)(void*, void*, FName) = decltype(CreateNetDriver)(ImageBase + 0x4573990);
-static bool (*InitListen)(void*, void*, FURL&, bool, FString&) = decltype(InitListen)(ImageBase + 0xd44c40);
-static void (*SetWorld)(void*, void*) = decltype(SetWorld)(ImageBase + 0x42c2b20);
+static bool (*InitListen)(void*, void*, FURL&, bool, FString&) = decltype(InitListen)(ImageBase + 0xD44C40);
+static void (*SetWorld)(void*, void*) = decltype(SetWorld)(ImageBase + 0x42C2B20);
 static bool (*InitHost)(UObject* Beacon) = decltype(InitHost)(ImageBase + 0xd446f0);
 static void (*PauseBeaconRequests)(UObject* Beacon, bool bPause) = decltype(PauseBeaconRequests)(ImageBase + 0x20dfad0);
 
@@ -40,10 +40,10 @@ static void (*AbilitySpecConstructor)(FGameplayAbilitySpec*, UGameplayAbility*, 
 static bool (*InternalTryActivateAbility)(UAbilitySystemComponent* AbilitySystemComp, FGameplayAbilitySpecHandle AbilityToActivate, FPredictionKey InPredictionKey, UGameplayAbility** OutInstancedAbility, void* OnGameplayAbilityEndedDelegate, const FGameplayEventData* TriggerEventData) = decltype(InternalTryActivateAbility)(ImageBase + 0x6b33f0);
 static FGameplayAbilitySpecHandle(*GiveAbilityAndActivateOnce)(UAbilitySystemComponent* ASC, FGameplayAbilitySpecHandle*, FGameplayAbilitySpec) = decltype(GiveAbilityAndActivateOnce)(ImageBase + 0x6b1b00);
 
-static FVector* (*PickSupplyDropLocationOG)(AFortAthenaMapInfo* MapInfo, FVector* outLocation, __int64 Center, float Radius) = decltype(PickSupplyDropLocationOG)(ImageBase + 0x5F3B5C0);
+static FVector* (*PickSupplyDropLocationOG)(AFortAthenaMapInfo* MapInfo, FVector* outLocation, __int64 Center, float Radius) = decltype(PickSupplyDropLocationOG)(ImageBase + 0x18848f0);
 
-static void* (*StaticFindObjectOG)(UClass*, UObject* Package, const wchar_t* OrigInName, bool ExactClass) = decltype(StaticFindObjectOG)(ImageBase + 0x2e1c4b0);
-static void* (*StaticLoadObjectOG)(UClass* Class, UObject* InOuter, const TCHAR* Name, const TCHAR* Filename, uint32_t LoadFlags, UObject* Sandbox, bool bAllowObjectReconciliation, void*) = decltype(StaticLoadObjectOG)(ImageBase + 0x2e1d7a0);
+static void* (*StaticFindObjectOG)(UClass*, UObject* Package, const wchar_t* OrigInName, bool ExactClass) = decltype(StaticFindObjectOG)(ImageBase + 0x2E1C4B0);
+static void* (*StaticLoadObjectOG)(UClass* Class, UObject* InOuter, const TCHAR* Name, const TCHAR* Filename, uint32_t LoadFlags, UObject* Sandbox, bool bAllowObjectReconciliation, void*) = decltype(StaticLoadObjectOG)(ImageBase + 0x2E1CD60);
 
 AFortAthenaMutator_Bots* BotMutator = nullptr;
 
