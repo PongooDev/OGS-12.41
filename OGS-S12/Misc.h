@@ -29,6 +29,12 @@ namespace Misc {
         MH_CreateHook((LPVOID)(ImageBase + 0x1E23840), False, nullptr);// change gamesession id
         MH_CreateHook((LPVOID)(ImageBase + 0x108D740), DispatchRequest, (LPVOID*)&DispatchRequestOG);
 
+        MH_CreateHook((LPVOID)(ImageBase + 0x3ca10c0), nullFunc, nullptr);
+        MH_CreateHook((LPVOID)(ImageBase + 0x2d95e00), nullFunc, nullptr);
+        MH_CreateHook((LPVOID)(ImageBase + 0x3262100), nullFunc, nullptr);
+        MH_CreateHook((LPVOID)(ImageBase + 0x1e23840), nullFunc, nullptr);
+        MH_CreateHook((LPVOID)(ImageBase + 0x2d95dc0), nullFunc, nullptr);
+
         Log("Misc Hooked!");
     }
 }
