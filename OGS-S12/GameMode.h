@@ -167,7 +167,7 @@ namespace GameMode {
 			GameMode->bWorldIsReady = true;
 
 			Log("Listening: 7777");
-			SetConsoleTitleA("OGS 19.10 | Listening: 7777");
+			SetConsoleTitleA("OGS 12.41 | Listening: 7777");
 		}
 
 		if (GameState->PlayersLeft > 0)

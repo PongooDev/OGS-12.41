@@ -11,7 +11,7 @@ void InitConsole() {
     AllocConsole();
     FILE* fptr;
     freopen_s(&fptr, "CONOUT$", "w+", stdout);
-    SetConsoleTitleA("OGS 12.61 | Starting...");
+    SetConsoleTitleA("OGS 12.41 | Starting...");
     Log("Welcome to OGS, Made with love by ObsessedTech!");
 }
 
