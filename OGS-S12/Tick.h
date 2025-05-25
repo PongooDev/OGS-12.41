@@ -19,8 +19,7 @@ namespace Tick {
 			Log("ReplicationDriver Doesent Exist!");
 		}
 
-		if (Driver && Driver->ClientConnections.Num() > 0 && Driver->ReplicationDriver)
-			ServerReplicateActors(Driver->ReplicationDriver);
+		ServerReplicateActors(Driver->ReplicationDriver);
 
 		if (GameState->GamePhase == EAthenaGamePhase::Warmup
 			&& (GameMode->NumPlayers + GameMode->NumBots) >= Globals::MinPlayersForEarlyStart

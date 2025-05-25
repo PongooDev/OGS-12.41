@@ -193,9 +193,9 @@ namespace GameMode {
 		AFortPlayerControllerAthena* PC = (AFortPlayerControllerAthena*)Player;
 		AFortPlayerStateAthena* PlayerState = (AFortPlayerStateAthena*)PC->PlayerState;
 		AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
-		auto Pawn = (AFortPlayerPawn*)PC->Pawn;
 
-		FTransform Transform = StartingLoc->GetTransform();
+		auto Transform = StartingLoc->GetTransform();
+		auto Pawn = GameMode->SpawnDefaultPawnAtTransform(Player, Transform);
 
 		Abilities::InitAbilitiesForPlayer(PC);
 
@@ -203,7 +203,7 @@ namespace GameMode {
 		PC->XPComponent->OnRep_bRegisteredWithQuestManager();
 
 		PlayerState->SeasonLevelUIDisplay = PC->XPComponent->CurrentLevel;
-		PlayerState->OnRep_SeasonLevelUIDisplay(); // ig this isnt in this season
+		PlayerState->OnRep_SeasonLevelUIDisplay();
 
 		UFortKismetLibrary::UpdatePlayerCustomCharacterPartsVisualization(PlayerState);
 		PlayerState->OnRep_CharacterData();
@@ -234,8 +234,6 @@ namespace GameMode {
 			Log("Pick Doesent Exist!");
 		}
 		//Pawn->CosmeticLoadout = PC->CosmeticLoadoutPC;
-		//((AFortPlayerStateAthena*)PlayerState)->HeroType = PC->CosmeticLoadoutPC.Character->HeroDefinition;
-		//((void (*)(APlayerState*, APawn*)) (ImageBase + 0x67b35f8))(PlayerState, Pawn);
 
 		for (size_t i = 0; i < GameMode->StartingItems.Num(); i++)
 		{
@@ -248,7 +246,8 @@ namespace GameMode {
 		GameState->OnRep_SafeZoneIndicator();
 		GameState->OnRep_SafeZonePhase();
 
-		return (AFortPlayerPawnAthena*)GameMode->SpawnDefaultPawnAtTransform(Player, Transform);
+		return Pawn;
+		//return (AFortPlayerPawnAthena*)GameMode->SpawnDefaultPawnAtTransform(Player, Transform);
 	}
 
 	inline __int64 PickTeam(__int64 a1, unsigned __int8 a2, __int64 a3)
