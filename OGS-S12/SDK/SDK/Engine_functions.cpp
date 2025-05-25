@@ -23626,8 +23626,8 @@ class UFXSystemAsset* UFXSystemComponent::GetFXSystemAsset() const
 
 class UWorld* UWorld::GetWorld()
 {
-	if constexpr (Offsets::GWorld != 0)
-		return *reinterpret_cast<UWorld**>(GetModuleHandleA(0) + Offsets::GWorld);
+	/*if constexpr (Offsets::GWorld != 0)
+		return *reinterpret_cast<UWorld**>(GetModuleHandleA(0) + Offsets::GWorld);*/
 
 	if (UEngine* Engine = UEngine::GetEngine())
 	{

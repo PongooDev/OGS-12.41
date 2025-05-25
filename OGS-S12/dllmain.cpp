@@ -12,17 +12,18 @@ void InitConsole() {
     FILE* fptr;
     freopen_s(&fptr, "CONOUT$", "w+", stdout);
     SetConsoleTitleA("OGS 12.41 | Starting...");
-    Log("Welcome to OGS, Made with love by ObsessedTech!");
+    Log("Welcome to MOGS, Made with love by ObsessedTech!");
 }
 
 void LoadWorld() {
-    UWorld::GetWorld()->OwningGameInstance->LocalPlayers.Remove(0);
+    Log("Loading World!");
     if (!Globals::bCreativeEnabled && !Globals::bSTWEnabled) {
         UKismetSystemLibrary::ExecuteConsoleCommand(UWorld::GetWorld(), L"open Apollo_Terrain", nullptr);
     }
     else if (Globals::bCreativeEnabled) {
         UKismetSystemLibrary::ExecuteConsoleCommand(UWorld::GetWorld(), L"open Creative_NoApollo_Terrain", nullptr);
     }
+    UWorld::GetWorld()->OwningGameInstance->LocalPlayers.Remove(0);
 }
 
 void Hook() {
@@ -35,7 +36,6 @@ void Hook() {
     Net::Hook();
     Tick::Hook();
 
-    Sleep(1000);
     MH_EnableHook(MH_ALL_HOOKS);
 }
 
@@ -54,9 +54,6 @@ DWORD Main(LPVOID) {
 
     Sleep(1000);
     LoadWorld();
-
-    UKismetSystemLibrary::ExecuteConsoleCommand(UWorld::GetWorld(), L"log LogFortUIDirector NoLogging", nullptr);
-    UKismetSystemLibrary::ExecuteConsoleCommand(UWorld::GetWorld(), L"log LogFortUIManager NoLogging", nullptr);
 
     return 0;
 }
