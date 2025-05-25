@@ -32,7 +32,7 @@ void Hook() {
     Abilities::Hook();
     Inventory::Hook();
 
-    //Misc::Hook();
+    Misc::Hook();
     Net::Hook();
     Tick::Hook();
 
@@ -49,8 +49,8 @@ DWORD Main(LPVOID) {
 
     Hook();
 
-    //*(bool*)(ImageBase + 0x804B659) = false; //GIsClient
-    //*(bool*)(ImageBase + 0x804B65A) = true; //GIsServer
+    *(bool*)(ImageBase + 0x804B659) = false; //GIsClient
+    *(bool*)(ImageBase + 0x804B65A) = true; //GIsServer
 
     while (UWorld::GetWorld() == nullptr)
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
