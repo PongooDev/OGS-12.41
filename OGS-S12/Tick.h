@@ -1,6 +1,7 @@
 #pragma once
 #include "framework.h"
 #include "Globals.h"
+#include "GameMode.h"
 
 namespace Tick {
 	void (*ServerReplicateActors)(void*) = decltype(ServerReplicateActors)(ImageBase + 0x1023F60);
@@ -32,6 +33,11 @@ namespace Tick {
 			GameMode->WarmupCountdownDuration = DR;
 			GameState->WarmupCountdownStartTime = TS;
 			GameMode->WarmupEarlyCountdownDuration = DR;
+		}
+
+		if (GameState->WarmupCountdownEndTime - UGameplayStatics::GetTimeSeconds(UWorld::GetWorld()) <= 0 && GameState->GamePhase == EAthenaGamePhase::Warmup)
+		{
+			GameMode::StartAircraftPhase(GameMode, 0);
 		}
 
 		return TickFlushOG(Driver, DeltaTime);

@@ -7,5 +7,5 @@ namespace Globals {
 
 	bool bBotsEnabled = true;
 
-	int MinPlayersForEarlyStart = 100;
+	int MinPlayersForEarlyStart = 1;
 }

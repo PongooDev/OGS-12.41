@@ -42,10 +42,20 @@ static FGameplayAbilitySpecHandle(*GiveAbilityAndActivateOnce)(UAbilitySystemCom
 
 static FVector* (*PickSupplyDropLocationOG)(AFortAthenaMapInfo* MapInfo, FVector* outLocation, __int64 Center, float Radius) = decltype(PickSupplyDropLocationOG)(ImageBase + 0x18848f0);
 
+inline static ABuildingSMActor* (*ReplaceBuildingActor)(ABuildingSMActor* BuildingSMActor, unsigned int a2, UObject* a3, unsigned int a4, int a5, bool bMirrored, AFortPlayerControllerAthena* PC) = decltype(ReplaceBuildingActor)(ImageBase + 0x1B951B0);
+static __int64 (*CantBuild)(UWorld*, UObject*, FVector, FRotator, char, void*, char*) = decltype(CantBuild)(ImageBase + 0x1E57790);
+
+static void (*BotManagerSetup)(__int64 BotManaager, __int64 Pawn, __int64 BehaviorTree, __int64 a4, DWORD* SkillLevel, __int64 a7, __int64 StartupInventory, __int64 BotNameSettings, __int64 a10, BYTE* CanRespawnOnDeath, unsigned __int8 BitFieldDataThing, BYTE* CustomSquadId, FFortAthenaAIBotRunTimeCustomizationData InRuntimeBotData) = decltype(BotManagerSetup)(ImageBase + 0x19D93F0);
+
+static void(*RemoveFromAlivePlayers)(AFortGameModeAthena*, AFortPlayerControllerAthena*, APlayerState*, AFortPlayerPawn*, UFortWeaponItemDefinition*, EDeathCause, char) = decltype(RemoveFromAlivePlayers)(ImageBase + 0x18ECBB0);
+static void (*AddToAlivePlayers)(AFortGameModeAthena* GameMode, AFortPlayerControllerAthena* Player) = decltype(AddToAlivePlayers)(ImageBase + 0x18c35b0);
+
 static void* (*StaticFindObjectOG)(UClass*, UObject* Package, const wchar_t* OrigInName, bool ExactClass) = decltype(StaticFindObjectOG)(ImageBase + 0x2E1C4B0);
-static void* (*StaticLoadObjectOG)(UClass* Class, UObject* InOuter, const TCHAR* Name, const TCHAR* Filename, uint32_t LoadFlags, UObject* Sandbox, bool bAllowObjectReconciliation, void*) = decltype(StaticLoadObjectOG)(ImageBase + 0x2E1CD60);
+static void* (*StaticLoadObjectOG)(UClass* Class, UObject* InOuter, const TCHAR* Name, const TCHAR* Filename, uint32_t LoadFlags, UObject* Sandbox, bool bAllowObjectReconciliation, void*) = decltype(StaticLoadObjectOG)(ImageBase + 0x2E1D7A0);
 
 AFortAthenaMutator_Bots* BotMutator = nullptr;
+
+static TArray<AActor*> PlayerStarts;
 
 void Log(const std::string& msg)
 {
@@ -280,6 +290,16 @@ inline void ShowFoundation(ABuildingFoundation* BuildingFoundation) {
 	BuildingFoundation->DynamicFoundationRepData.EnabledState = EDynamicFoundationEnabledState::Enabled;
 	BuildingFoundation->DynamicFoundationTransform = BuildingFoundation->GetTransform();
 	BuildingFoundation->OnRep_DynamicFoundationRepData();
+}
+
+FVector PickSupplyDropLocation(AFortAthenaMapInfo* MapInfo, FVector Center, float Radius)
+{
+	if (!PickSupplyDropLocationOG)
+		return FVector(0, 0, 0);
+
+	FVector loc = FVector(0, 0, 0);
+	auto PickSupplyDropLoc = PickSupplyDropLocationOG(MapInfo, &loc, __int64(&Center), Radius);
+	return loc;
 }
 
 template<typename T>

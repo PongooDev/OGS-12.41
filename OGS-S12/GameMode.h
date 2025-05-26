@@ -8,167 +8,232 @@ namespace GameMode {
 	int CurrentPlayersOnTeam = 0;
 	int MaxPlayersOnTeam = 1;
 
-	bool (*ReadyToStartMatchOG)(AFortGameModeAthena* GameMode);
-	bool ReadyToStartMatch(AFortGameModeAthena* GameMode) {
+	inline bool (*ReadyToStartMatchOG)(AFortGameModeAthena* GameMode);
+	inline bool ReadyToStartMatch(AFortGameModeAthena* GameMode)
+	{
+		ReadyToStartMatchOG(GameMode);
+
+		static bool SetupServer = false;
+		static bool ServerListening = false;
+
 		AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
-		static bool SetupPlaylist = false;
-		if (!SetupPlaylist) {
-			SetupPlaylist = true;
-			UFortPlaylistAthena* Playlist;
-			if (Globals::bCreativeEnabled) {
-				Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Creative/Playlist_PlaygroundV2.Playlist_PlaygroundV2");
+		if (!SetupServer) {
+			static bool LoadedPlaylist = false;
+			if (!LoadedPlaylist) {
+				LoadedPlaylist = true;
+				UFortPlaylistAthena* Playlist;
+				if (Globals::bCreativeEnabled) {
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Creative/Playlist_PlaygroundV2.Playlist_PlaygroundV2");
+				}
+				else if (Globals::bEventEnabled) {
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Music/Playlist_Music_High.Playlist_Music_High");
+				}
+				else {
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo");
+				}
+				if (!Playlist) {
+					Log("Could not find playlist!");
+					return false;
+				}
+				else {
+					Log("Found Playlist!");
+				}
+
+				GameState->CurrentPlaylistInfo.BasePlaylist = Playlist;
+				GameState->CurrentPlaylistInfo.OverridePlaylist = Playlist;
+				GameState->CurrentPlaylistInfo.PlaylistReplicationKey++;
+				GameState->CurrentPlaylistInfo.MarkArrayDirty();
+				GameState->OnRep_CurrentPlaylistInfo();
+
+				GameMode->CurrentPlaylistName = Playlist->PlaylistName;
+				GameMode->WarmupRequiredPlayerCount = 1;
+
+				NextIdx = Playlist->DefaultFirstTeam;
+				MaxPlayersOnTeam = Playlist->MaxSquadSize;
+
+				if (MaxPlayersOnTeam > 1)
+				{
+					GameMode->bDBNOEnabled = true;
+					GameMode->bAlwaysDBNO = true;
+					GameState->bDBNODeathEnabled = true;
+					GameState->SetIsDBNODeathEnabled(true);
+				}
+
+				GameState->CurrentPlaylistInfo.BasePlaylist = Playlist;
+				GameState->CurrentPlaylistInfo.OverridePlaylist = Playlist;
+				GameState->CurrentPlaylistInfo.PlaylistReplicationKey++;
+				GameState->CurrentPlaylistId = Playlist->PlaylistId;
+				GameState->CurrentPlaylistInfo.MarkArrayDirty();
+
+				GameMode->GameSession->MaxPlayers = Playlist->MaxPlayers;
+				GameMode->GameSession->MaxSpectators = 0;
+				GameMode->GameSession->MaxPartySize = Playlist->MaxSquadSize;
+				GameMode->GameSession->MaxSplitscreensPerConnection = 2;
+				GameMode->GameSession->bRequiresPushToTalk = false;
+				GameMode->GameSession->SessionName = UKismetStringLibrary::Conv_StringToName(FString(L"GameSession"));
+
+				auto TS = UGameplayStatics::GetTimeSeconds(UWorld::GetWorld());
+				auto DR = 90.f;
+
+				GameState->WarmupCountdownEndTime = TS + DR;
+				GameMode->WarmupCountdownDuration = DR;
+				GameState->WarmupCountdownStartTime = TS;
+				GameMode->WarmupEarlyCountdownDuration = DR;
+
+				GameState->CurrentPlaylistId = Playlist->PlaylistId;
+				GameState->OnRep_CurrentPlaylistId();
+
+				GameState->bGameModeWillSkipAircraft = Playlist->bSkipAircraft;
+				GameState->CachedSafeZoneStartUp = Playlist->SafeZoneStartUp;
+				GameState->AirCraftBehavior = Playlist->AirCraftBehavior;
+				GameState->OnRep_Aircraft();
+
+				if (Globals::bEventEnabled) {
+					Log("Event is loaded!");
+
+					TArray<AActor*> BuildingFoundations;
+					UGameplayStatics::GetAllActorsOfClass(UWorld::GetWorld(), ABuildingFoundation::StaticClass(), &BuildingFoundations);
+
+
+					for (AActor*& BuildingFoundation : BuildingFoundations) {
+						ABuildingFoundation* Foundation = (ABuildingFoundation*)BuildingFoundation;
+						if (!Foundation) continue;
+
+						if (BuildingFoundation->GetName().contains("Jerky") ||
+							BuildingFoundation->GetName().contains("LF_Athena_POI_19x19")) {
+							ShowFoundation((ABuildingFoundation*)BuildingFoundation);
+						}
+					}
+
+					BuildingFoundations.Free();
+				}
+				else {
+					ABuildingFoundation* BuildingFound = StaticFindObject<ABuildingFoundation>(L"/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.LF_Athena_POI_19x19_2");
+					ShowFoundation((ABuildingFoundation*)BuildingFound);
+				}
+
+				Log("Setup Playlist!");
 			}
-			else {
-				Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo");
-			}
-			if (!Playlist) {
-				Log("Could not find playlist!");
+
+			if (!GameState->MapInfo) {
+				//Log("Map isnt fully loaded yet, ReadyToStartMatch return false!"); //this spams so why log 
 				return false;
 			}
-			else {
-				Log("Found Playlist!");
+
+			static bool InitialisedBots = false;
+
+			if (!InitialisedBots) {
+				if (Globals::bEventEnabled) {
+					InitialisedBots = true;
+				}
+				else if (auto BotManager = (UFortServerBotManagerAthena*)UGameplayStatics::SpawnObject(UFortServerBotManagerAthena::StaticClass(), GameMode))
+				{
+					GameMode->ServerBotManager = BotManager;
+					BotManager->CachedGameState = GameState;
+					BotManager->CachedGameMode = GameMode;
+
+					BotMutator = SpawnActor<AFortAthenaMutator_Bots>({});
+					BotManager->CachedBotMutator = BotMutator;
+					BotMutator->CachedGameMode = GameMode;
+					BotMutator->CachedGameState = GameState;
+
+					AAthenaAIDirector* Director = SpawnActor<AAthenaAIDirector>({});
+					GameMode->AIDirector = Director;
+					//Director->Activate();
+
+					AFortAIGoalManager* GoalManager = SpawnActor<AFortAIGoalManager>({});
+					GameMode->AIGoalManager = GoalManager;
+
+					InitialisedBots = true;
+					Log("Initialised Bots!");
+				}
+				else
+				{
+					Log("BotManager is nullptr!");
+				}
 			}
 
-			GameState->CurrentPlaylistInfo.BasePlaylist = Playlist;
-			GameState->CurrentPlaylistInfo.OverridePlaylist = Playlist;
-			GameState->CurrentPlaylistInfo.PlaylistReplicationKey++;
-			GameState->CurrentPlaylistInfo.MarkArrayDirty();
-			GameState->OnRep_CurrentPlaylistInfo();
+			if (!ServerListening) {
+				ServerListening = true;
 
-			GameMode->CurrentPlaylistName = Playlist->PlaylistName;
-			GameMode->WarmupRequiredPlayerCount = 1;
+				GameState->OnRep_CurrentPlaylistId();
+				GameState->OnRep_CurrentPlaylistInfo();
 
-			GameMode->bDBNOEnabled = Playlist->MaxTeamSize > 1;
-			GameMode->bAlwaysDBNO = Playlist->MaxTeamSize > 1;
-			GameState->bDBNODeathEnabled = Playlist->MaxTeamSize > 1;
-			GameState->SetIsDBNODeathEnabled(Playlist->MaxTeamSize > 1);
+				FName NetDriverDef = UKismetStringLibrary::Conv_StringToName(FString(L"GameNetDriver"));
 
-			NextIdx = Playlist->DefaultFirstTeam;
-			MaxPlayersOnTeam = Playlist->MaxSquadSize;
+				UNetDriver* NetDriver = CreateNetDriver(UEngine::GetEngine(), UWorld::GetWorld(), NetDriverDef);
+				NetDriver->NetDriverName = NetDriverDef;
+				NetDriver->World = UWorld::GetWorld();
 
-			GameMode->GameSession->MaxPlayers = Playlist->MaxPlayers;
-			GameMode->GameSession->MaxSpectators = 0;
-			GameMode->GameSession->MaxPartySize = Playlist->MaxSquadSize;
-			GameMode->GameSession->MaxSplitscreensPerConnection = 2;
-			GameMode->GameSession->bRequiresPushToTalk = false;
-			GameMode->GameSession->SessionName = UKismetStringLibrary::Conv_StringToName(FString(L"GameSession"));
+				FString Error;
+				FURL url = FURL();
+				url.Port = 7777;
 
-			auto TS = UGameplayStatics::GetTimeSeconds(UWorld::GetWorld());
-			auto DR = 120.f;
+				InitListen(NetDriver, UWorld::GetWorld(), url, false, Error);
+				SetWorld(NetDriver, UWorld::GetWorld());
 
-			GameState->WarmupCountdownEndTime = TS + DR;
-			GameMode->WarmupCountdownDuration = DR;
-			GameState->WarmupCountdownStartTime = TS;
-			GameMode->WarmupEarlyCountdownDuration = DR;
+				UWorld::GetWorld()->NetDriver = NetDriver;
 
-			GameState->CurrentPlaylistId = Playlist->PlaylistId;
-			GameState->OnRep_CurrentPlaylistId();
+				for (size_t i = 0; i < UWorld::GetWorld()->LevelCollections.Num(); i++) {
+					UWorld::GetWorld()->LevelCollections[i].NetDriver = NetDriver;
+				}
 
-			GameState->bGameModeWillSkipAircraft = Playlist->bSkipAircraft;
-			GameState->CachedSafeZoneStartUp = Playlist->SafeZoneStartUp;
-			GameState->AirCraftBehavior = Playlist->AirCraftBehavior;
-			GameState->OnRep_Aircraft();
+				SetWorld(UWorld::GetWorld()->NetDriver, UWorld::GetWorld());
 
-			GameState->DefaultParachuteDeployTraceForGroundDistance = 10000;
+				for (int i = 0; i < GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels.Num(); i++)
+				{
+					FVector Loc{};
+					FRotator Rot{};
+					bool bSuccess = false;
+					((ULevelStreamingDynamic*)ULevelStreamingDynamic::StaticClass()->DefaultObject)->LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels[i], Loc, Rot, &bSuccess, FString());
+					FAdditionalLevelStreamed NewLevel{};
+					NewLevel.LevelName = GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels[i].ObjectID.AssetPathName;
+					NewLevel.bIsServerOnly = false;
+					GameState->AdditionalPlaylistLevelsStreamed.Add(NewLevel);
+				}
 
-			Log("Setup Playlist!");
+				for (int i = 0; i < GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevelsServerOnly.Num(); i++)
+				{
+					FVector Loc{};
+					FRotator Rot{};
+					bool bSuccess = false;
+					((ULevelStreamingDynamic*)ULevelStreamingDynamic::StaticClass()->DefaultObject)->LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevelsServerOnly[i], Loc, Rot, &bSuccess, FString());
+					FAdditionalLevelStreamed NewLevel{};
+					NewLevel.LevelName = GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevelsServerOnly[i].ObjectID.AssetPathName;
+					NewLevel.bIsServerOnly = true;
+					GameState->AdditionalPlaylistLevelsStreamed.Add(NewLevel);
+				}
+				GameState->OnRep_AdditionalPlaylistLevelsStreamed();
+				GameState->OnFinishedStreamingAdditionalPlaylistLevel();
+
+				GameMode->bWorldIsReady = true;
+
+				Log("Listening: 7777");
+				SetConsoleTitleA("OGS 12.41 | Listening: 7777");
+			}
+
+			/*if (UWorld::GetWorld()->NetDriver->ClientConnections.Num() > 0) {
+				std::cout << "Return true\n";
+				return true;
+			}*/
 		}
 
-		if (!GameState->MapInfo) { // cant listen without map being fully loaded
+		/*if (GameMode->bDelayedStart)
+		{
 			return false;
-		}
+		}*/
 
-		static bool InitialisedBots = false;
+		//std::cout << GameMode->GetMatchState().ToString() << "\n";
 
-		if (!InitialisedBots) {
-			if (Globals::bEventEnabled || !Globals::bBotsEnabled) {
-				InitialisedBots = true;
-			}
-			else if (auto BotManager = (UFortServerBotManagerAthena*)UGameplayStatics::SpawnObject(UFortServerBotManagerAthena::StaticClass(), GameMode))
+		/*if (GameMode->GetMatchState().ToString() == "WaitingToStart")
+		{
+			if (GameMode->NumPlayers + GameMode->NumBots > 0)
 			{
-				GameMode->ServerBotManager = BotManager;
-				BotManager->CachedGameState = GameState;
-				BotManager->CachedGameMode = GameMode;
-
-				BotMutator = SpawnActor<AFortAthenaMutator_Bots>({});
-				BotManager->CachedBotMutator = BotMutator;
-				BotMutator->CachedGameMode = GameMode;
-				BotMutator->CachedGameState = GameState;
-
-				AAthenaAIDirector* Director = SpawnActor<AAthenaAIDirector>({});
-				GameMode->AIDirector = Director;
-				//Director->Activate();
-
-				AFortAIGoalManager* GoalManager = SpawnActor<AFortAIGoalManager>({});
-				GameMode->AIGoalManager = GoalManager;
-
-				Globals::bBotsEnabled = BotMutator;
-				InitialisedBots = true;
-				Log("Initialised Bots!");
+				Log("Enough Players/Bots, Starting match!");
+				return true;
 			}
-			else
-			{
-				Log("BotManager is nullptr!");
-			}
-		}
-
-		static bool Listening = false;
-		if (!Listening) {
-			Listening = true;
-
-			FName NetDriverDef = UKismetStringLibrary::Conv_StringToName(FString(L"GameNetDriver"));
-
-			UNetDriver* NetDriver = CreateNetDriver(UEngine::GetEngine(), UWorld::GetWorld(), NetDriverDef);
-			NetDriver->NetDriverName = NetDriverDef;
-			NetDriver->World = UWorld::GetWorld();
-
-			FString Error;
-			FURL url = FURL();
-			url.Port = 7777;
-
-			InitListen(NetDriver, UWorld::GetWorld(), url, false, Error);
-			SetWorld(NetDriver, UWorld::GetWorld());
-
-			UWorld::GetWorld()->NetDriver = NetDriver;
-
-			for (size_t i = 0; i < UWorld::GetWorld()->LevelCollections.Num(); i++) {
-				UWorld::GetWorld()->LevelCollections[i].NetDriver = NetDriver;
-			}
-
-			SetWorld(UWorld::GetWorld()->NetDriver, UWorld::GetWorld());
-
-			for (int i = 0; i < GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels.Num(); i++)
-			{
-				FVector Loc{};
-				FRotator Rot{};
-				bool bSuccess = false;
-				((ULevelStreamingDynamic*)ULevelStreamingDynamic::StaticClass()->DefaultObject)->LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels[i], Loc, Rot, &bSuccess, FString());
-				FAdditionalLevelStreamed NewLevel{};
-				NewLevel.LevelName = GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels[i].ObjectID.AssetPathName;
-				NewLevel.bIsServerOnly = false;
-				GameState->AdditionalPlaylistLevelsStreamed.Add(NewLevel);
-			}
-
-			for (int i = 0; i < GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevelsServerOnly.Num(); i++)
-			{
-				FVector Loc{};
-				FRotator Rot{};
-				bool bSuccess = false;
-				((ULevelStreamingDynamic*)ULevelStreamingDynamic::StaticClass()->DefaultObject)->LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevelsServerOnly[i], Loc, Rot, &bSuccess, FString());
-				FAdditionalLevelStreamed NewLevel{};
-				NewLevel.LevelName = GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevelsServerOnly[i].ObjectID.AssetPathName;
-				NewLevel.bIsServerOnly = true;
-				GameState->AdditionalPlaylistLevelsStreamed.Add(NewLevel);
-			}
-			GameState->OnRep_AdditionalPlaylistLevelsStreamed();
-			GameState->OnFinishedStreamingAdditionalPlaylistLevel();
-
-			GameMode->bWorldIsReady = true;
-
-			Log("Listening: 7777");
-			SetConsoleTitleA("OGS 12.41 | Listening: 7777");
-		}
+		}*/
 
 		if (GameState->PlayersLeft > 0)
 		{
@@ -177,7 +242,7 @@ namespace GameMode {
 		else
 		{
 			auto TS = UGameplayStatics::GetTimeSeconds(UWorld::GetWorld());
-			auto DR = 120.f;
+			auto DR = 90.f;
 
 			GameState->WarmupCountdownEndTime = TS + DR;
 			GameMode->WarmupCountdownDuration = DR;
@@ -186,6 +251,7 @@ namespace GameMode {
 		}
 
 		return false;
+		//return UWorld::GetWorld()->NetDriver->ClientConnections.Num() > 0;
 	}
 
 	inline APawn* SpawnDefaultPawnFor(AFortGameModeAthena* GameMode, AFortPlayerController* Player, AActor* StartingLoc)
@@ -195,7 +261,7 @@ namespace GameMode {
 		AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
 		auto Transform = StartingLoc->GetTransform();
-		auto Pawn = GameMode->SpawnDefaultPawnAtTransform(Player, Transform);
+		auto Pawn = (AFortPlayerPawn*)GameMode->SpawnDefaultPawnAtTransform(Player, Transform);
 
 		Abilities::InitAbilitiesForPlayer(PC);
 
@@ -233,7 +299,8 @@ namespace GameMode {
 		else {
 			Log("Pick Doesent Exist!");
 		}
-		//Pawn->CosmeticLoadout = PC->CosmeticLoadoutPC;
+		Pawn->CosmeticLoadout = PC->CosmeticLoadoutPC;
+		Pawn->OnRep_CosmeticLoadout();
 
 		for (size_t i = 0; i < GameMode->StartingItems.Num(); i++)
 		{
@@ -263,12 +330,48 @@ namespace GameMode {
 		return Ret;
 	};
 
+	static __int64 (*StartAircraftPhaseOG)(AFortGameModeAthena* GameMode, char a2) = nullptr;
+	__int64 StartAircraftPhase(AFortGameModeAthena* GameMode, char a2)
+	{
+		return StartAircraftPhaseOG(GameMode, a2);
+	}
+
+	static inline void (*OriginalOnAircraftExitedDropZone)(AFortGameModeAthena* GameMode, AFortAthenaAircraft* FortAthenaAircraft);
+	void OnAircraftExitedDropZone(AFortGameModeAthena* GameMode, AFortAthenaAircraft* FortAthenaAircraft)
+	{
+		Log("OnAircraftExitedDropZone!");
+		
+		return OriginalOnAircraftExitedDropZone(GameMode, FortAthenaAircraft);
+	}
+
+	__int64 (*OnAircraftEnteredDropZoneOG)(AFortGameModeAthena*);
+	__int64 OnAircraftEnteredDropZone(AFortGameModeAthena* a1)
+	{
+		Log("OnAircraftEnteredDropZone Called!");
+
+		return OnAircraftEnteredDropZoneOG(a1);
+	}
+
+	void (*StormOG)(AFortGameModeAthena* GameMode, int32 ZoneIndex);
+	void __fastcall Storm(AFortGameModeAthena* GameMode, int32 ZoneIndex)
+	{
+		return StormOG(GameMode, ZoneIndex);
+	}
+
 	void Hook() {
 		MH_CreateHook((LPVOID)(ImageBase + 0x4640A30), ReadyToStartMatch, (LPVOID*)&ReadyToStartMatchOG);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x18F6250), SpawnDefaultPawnFor, nullptr);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x18E6B20), PickTeam, nullptr);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x18F9BB0), StartAircraftPhase, (LPVOID*)&StartAircraftPhaseOG);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x18E07D0), OnAircraftExitedDropZone, (LPVOID*)&OriginalOnAircraftExitedDropZone);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x18E0730), OnAircraftEnteredDropZone, (LPVOID*)&OnAircraftEnteredDropZoneOG);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x18FD350), Storm, (LPVOID*)&StormOG);
 
 		Log("Gamemode Hooked!");
 	}
