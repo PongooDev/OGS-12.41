@@ -19,6 +19,12 @@
     <Filter Include="SDK\SDK">
       <UniqueIdentifier>{5507978a-6067-4f97-9fb9-0c86dd3f97f4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{40f49bfe-997d-4b9c-9926-36bc7ed89fc8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\AI">
+      <UniqueIdentifier>{f67b8e8a-e274-4eb4-a006-120a08f05dc6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -79,6 +85,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Bots.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Bosses.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SDK\SDK\AIModule_structs.hpp">
+      <Filter>SDK\SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="SDK\SDK\AIModule_parameters.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

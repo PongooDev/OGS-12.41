@@ -2,6 +2,7 @@
 #include "framework.h"
 #include "Inventory.h"
 #include "Abilities.h"
+#include "Bots.h"
 
 namespace GameMode {
 	uint8 NextIdx = 3;
@@ -333,6 +334,14 @@ namespace GameMode {
 	static __int64 (*StartAircraftPhaseOG)(AFortGameModeAthena* GameMode, char a2) = nullptr;
 	__int64 StartAircraftPhase(AFortGameModeAthena* GameMode, char a2)
 	{
+		for (auto FactionBot : FactionBots) // idek if im supposed to be setting these for the henchmens
+		{
+			static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+			FactionBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusLocked);
+			FactionBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+		}
+
 		return StartAircraftPhaseOG(GameMode, a2);
 	}
 
@@ -348,6 +357,14 @@ namespace GameMode {
 	__int64 OnAircraftEnteredDropZone(AFortGameModeAthena* a1)
 	{
 		Log("OnAircraftEnteredDropZone Called!");
+
+		for (auto FactionBot : FactionBots)
+		{
+			static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+			FactionBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusFlying);
+			FactionBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+		}
 
 		return OnAircraftEnteredDropZoneOG(a1);
 	}

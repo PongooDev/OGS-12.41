@@ -141,6 +141,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Abilities.h" />
+    <ClInclude Include="Bosses.h" />
     <ClInclude Include="Bots.h" />
     <ClInclude Include="Building.h" />
     <ClInclude Include="framework.h" />
@@ -154,6 +155,8 @@
     <ClInclude Include="SDK\PropertyFixup.hpp" />
     <ClInclude Include="SDK\SDK.hpp" />
     <ClInclude Include="SDK\SDK\AIModule_classes.hpp" />
+    <ClInclude Include="SDK\SDK\AIModule_parameters.hpp" />
+    <ClInclude Include="SDK\SDK\AIModule_structs.hpp" />
     <ClInclude Include="SDK\SDK\FortniteGame_classes.hpp" />
     <ClInclude Include="SDK\SDK\FortniteGame_parameters.hpp" />
     <ClInclude Include="SDK\SDK\FortniteGame_structs.hpp" />

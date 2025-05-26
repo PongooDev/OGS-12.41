@@ -2,18 +2,15 @@
 #include "framework.h"
 #include "Looting.h"
 
-namespace Bots {
-	auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
-	auto Math = (UKismetMathLibrary*)UKismetMathLibrary::StaticClass()->DefaultObject;
-	auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
-	auto Statics = (UGameplayStatics*)UGameplayStatics::StaticClass()->DefaultObject;
+#include "Bosses.h"
 
+namespace Bots {
 	AFortPlayerPawnAthena* (*SpawnBotOG)(UFortServerBotManagerAthena* BotManager, FVector SpawnLoc, FRotator SpawnRot, UFortAthenaAIBotCustomizationData* BotData, FFortAthenaAIBotRunTimeCustomizationData RuntimeBotData);
 	AFortPlayerPawnAthena* SpawnBot(UFortServerBotManagerAthena* BotManager, FVector SpawnLoc, FRotator SpawnRot, UFortAthenaAIBotCustomizationData* BotData, FFortAthenaAIBotRunTimeCustomizationData RuntimeBotData)
 	{
 		if (__int64(_ReturnAddress()) - __int64(GetModuleHandleA(0)) == 0x1A4153F) {
 			return SpawnBotOG(BotManager, SpawnLoc, SpawnRot, BotData, RuntimeBotData);
-		}  
+		}
 
 		std::string BotName = BotData->Name.ToString();
 
@@ -51,6 +48,11 @@ namespace Bots {
 		PC->RunBehaviorTree(BehaviorTree);
 		PC->UseBlackboard(BehaviorTree->BlackboardAsset, &Blackboard);
 
+		static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+		static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+		PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
+		PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
+
 		PC->CosmeticLoadoutBC = BotData->CharacterCustomization->CustomizationLoadout;
 		PC->CachedPatrollingComponent = (UFortAthenaNpcPatrollingComponent*)UGameplayStatics::SpawnObject(UFortAthenaNpcPatrollingComponent::StaticClass(), PC);
 		for (int32 i = 0; i < BotData->CharacterCustomization->CustomizationLoadout.Character->HeroDefinition->Specializations.Num(); i++)
@@ -77,14 +79,38 @@ namespace Bots {
 
 		BotManagerSetup(__int64(BotManager), __int64(Ret), __int64(BotData->BehaviorTree), 0, &CustomSquadId, 0, __int64(BotData->StartupInventory), __int64(BotData->BotNameSettings), 0, &FalseByte, 0, &TrueByte, RuntimeBotData);
 
+		FactionBot* bot = new FactionBot(Ret);
+
+		bot->CID = BotData->CharacterCustomization->CustomizationLoadout.Character->GetName();
+
+		for (int32 i = 0; i < BotData->StartupInventory->Items.Num(); i++)
+		{
+			bool equip = true;
+
+			if (BotData->StartupInventory->Items[i]->GetName().starts_with("WID_Athena_FloppingRabbit") || BotData->StartupInventory->Items[i]->GetName().starts_with("WID_Boss_Adventure_GH")) {
+				equip = false;
+			}
+			bot->GiveItem(BotData->StartupInventory->Items[i], 1, equip);
+			if (auto Data = Cast<UFortWeaponItemDefinition>(BotData->StartupInventory->Items[i]))
+			{
+				if (Data->GetAmmoWorldItemDefinition_BP() && Data->GetAmmoWorldItemDefinition_BP() != Data)
+				{
+					bot->GiveItem(Data->GetAmmoWorldItemDefinition_BP(), 99999);
+				}
+			}
+		}
+
 		TArray<AFortAthenaPatrolPath*> PatrolPaths;
 
 		Statics->GetAllActorsOfClass(UWorld::GetWorld(), AFortAthenaPatrolPath::StaticClass(), (TArray<AActor*>*) & PatrolPaths);
 
+		bot->Name = BotName;
 		for (int i = 0; i < PatrolPaths.Num(); i++) {
 			if (PatrolPaths[i]->PatrolPoints[0]->K2_GetActorLocation() == SpawnLoc) {
 				//Log("Found patrol path for bot: " + BotData->GetFullName());
+				bot->PC->CachedPatrollingComponent->SetPatrolPath(PatrolPaths[i]);
 				PC->CachedPatrollingComponent->SetPatrolPath(PatrolPaths[i]);
+				bot->PatrolPath = PatrolPaths[i];
 			}
 		}
 
@@ -106,6 +132,32 @@ namespace Bots {
 			return;
 		}
 
+		FactionBot* KilledBot = nullptr;
+		for (size_t i = 0; i < FactionBots.size(); i++)
+		{
+			auto bot = FactionBots[i];
+			if (bot && bot->PC == PC)
+			{
+				if (bot->Pawn->GetName().starts_with("BP_Pawn_DangerGrape_")) {
+					goto nodrop;
+				}
+				else {
+					KilledBot = bot;
+				}
+			}
+		}
+
+		/*if (InstigatedBy && DamageCauser) {
+			for (auto& bot : PlayerBotArray)
+			{
+				if (bot && bot->PC && bot->PC == PC && !bot->bIsDead)
+				{
+					bot->OnDied((AFortPlayerStateAthena*)InstigatedBy->PlayerState, DamageCauser, BoneName);
+					break;
+				}
+			}
+		}*/
+
 		PC->PlayerBotPawn->SetMaxShield(0);
 		for (int32 i = 0; i < PC->Inventory->Inventory.ReplicatedEntries.Num(); i++)
 		{
@@ -113,10 +165,10 @@ namespace Bots {
 				continue;
 			auto Def = PC->Inventory->Inventory.ReplicatedEntries[i].ItemDefinition;
 			if (Def->GetName() == "AGID_Athena_Keycard_Yacht") {
-				
+				goto nodrop;
 			}
 			if (Def->GetName() == "WID_Boss_Tina") {
-				
+				Def = KilledBot->Weapon;
 			}
 			SpawnPickup(Def, PC->Inventory->Inventory.ReplicatedEntries[i].Count, PC->Inventory->Inventory.ReplicatedEntries[i].LoadedAmmo, PC->Pawn->K2_GetActorLocation(), EFortPickupSourceTypeFlag::Other, EFortPickupSpawnSource::PlayerElimination);
 			int Ammo = 0;
@@ -136,12 +188,34 @@ namespace Bots {
 			}
 		}
 
+	nodrop:
+		for (size_t i = 0; i < FactionBots.size(); i++)
+		{
+			auto bot = FactionBots[i];
+			if (bot && bot->PC == PC)
+			{
+				FactionBots.erase(FactionBots.begin() + i);
+				break;
+			}
+		}
+
 		return OnPossessedPawnDiedOG(PC, DamagedActor, Damage, InstigatedBy, DamageCauser, HitLocation, HitComp, BoneName, Momentum);
 	}
 
 	wchar_t* (*OnPerceptionSensedOG)(ABP_PhoebePlayerController_C* PC, AActor* SourceActor, FAIStimulus& Stimulus);
 	wchar_t* OnPerceptionSensed(ABP_PhoebePlayerController_C* PC, AActor* SourceActor, FAIStimulus& Stimulus)
 	{
+		if (SourceActor->IsA(AFortPlayerPawnAthena::StaticClass()) && Cast<AFortPlayerPawnAthena>(SourceActor)->Controller && !Cast<AFortPlayerPawnAthena>(SourceActor)->Controller->IsA(ABP_PhoebePlayerController_C::StaticClass()) /*!Cast<AFortPlayerPawnAthena>(SourceActor)->Controller->IsA(ABP_PhoebePlayerController_C::StaticClass())*/)
+		{
+			for (auto bot : FactionBots)
+			{
+				if (bot->PC == PC)
+				{
+					bot->OnPerceptionSensed(SourceActor, Stimulus);
+				}
+			}
+		}
+
 		return OnPerceptionSensedOG(PC, SourceActor, Stimulus);
 	}
 

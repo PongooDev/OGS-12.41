@@ -5,6 +5,7 @@ namespace Globals {
 	bool bSTWEnabled = false;
 	bool bEventEnabled = false;
 
+	bool bBossesEnabled = true;
 	bool bBotsEnabled = true;
 
 	int MinPlayersForEarlyStart = 1;
