@@ -219,6 +219,39 @@ namespace Bots {
 		return OnPerceptionSensedOG(PC, SourceActor, Stimulus);
 	}
 
+	void (*OnActorBumpOG)(UPathFollowingComponent* Comp, AActor* SelfActor, AActor* OtherActor, const FVector& NormalImpulse, FHitResult& Hit);
+	void OnActorBump(UFortAthenaAIBotPathFollowingComponent* Comp, AActor* SelfActor, AActor* OtherActor, const FVector& NormalImpulse, FHitResult& Hit)
+	{
+		//Log("OnActorBump Called!");
+		for (auto& bot : FactionBots)
+		{
+			if (bot->PC == Comp->BotController)
+			{
+				bot->bWasReportedStuck = true;
+
+				if (!bot->Pawn->bIsCrouched && Math->RandomBoolWithWeight(0.1f)) {
+					bot->Pawn->Crouch(false);
+				}
+				if (bot->Pawn->bIsCrouched && (bot->tick_counter % 30) == 0) {
+					bot->Pawn->UnCrouch(false);
+				}
+
+				if (Math->RandomBoolWithWeight(0.025f)) {
+					bot->Pawn->UnCrouch(false);
+					bot->Pawn->Jump();
+				}
+
+				bot->Pawn->EquipWeaponDefinition(bot->Pickaxe, bot->PickaxeGuid);
+
+				bot->Pawn->PawnStartFire(0);
+				bot->Pawn->PawnStopFire(0);
+				break;
+			}
+		}
+
+		return OnActorBumpOG(Comp, SelfActor, OtherActor, NormalImpulse, Hit);
+	}
+
 	void Hook() {
 		MH_CreateHook((LPVOID)(ImageBase + 0x19E9B10), SpawnBot, (LPVOID*)&SpawnBotOG);
 
@@ -227,6 +260,8 @@ namespace Bots {
 		MH_CreateHook((LPVOID)(ImageBase + 0x163C760), OnPossessedPawnDied, (LPVOID*)&OnPossessedPawnDiedOG);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x163C300), OnPerceptionSensed, (LPVOID*)&OnPerceptionSensedOG);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x49932C0), OnActorBump, (LPVOID*)&OnActorBumpOG);
 
 		Log("Hooked Bots!");
 	}

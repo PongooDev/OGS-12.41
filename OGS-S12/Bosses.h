@@ -91,6 +91,8 @@ public:
 	// the bot this bot will revive when downed, or the other way round
 	FactionBot* CurrentAssignedDBNOBot;
 
+	bool bWasReportedStuck = false;
+
 public:
 	FactionBot(AFortPlayerPawnAthena* Pawn)
 	{
@@ -336,9 +338,36 @@ namespace Bosses {
 				bot->PC->K2_SetActorRotation(TestRot, true);
 
 				if (Distance < 200.0f) {
+					auto PlayerState = (AFortPlayerStateAthena*)bot->CurrentAssignedDBNOBot->PC->PlayerState;
+					auto AbilitySystemComp = (UFortAbilitySystemComponentAthena*)PlayerState->AbilitySystemComponent;
+
+					FGameplayEventData Data{};
+					Data.EventTag = bot->CurrentAssignedDBNOBot->Pawn->EventReviveTag;
+					Data.ContextHandle = PlayerState->AbilitySystemComponent->MakeEffectContext();
+					Data.Instigator = bot->PC;
+					Data.Target = bot->CurrentAssignedDBNOBot->Pawn;
+					Data.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(bot->CurrentAssignedDBNOBot->Pawn);
+					Data.TargetTags = bot->CurrentAssignedDBNOBot->Pawn->GameplayTags;
+					UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(bot->CurrentAssignedDBNOBot->Pawn, bot->CurrentAssignedDBNOBot->Pawn->EventReviveTag, Data);
+
+					for (auto& Ability : AbilitySystemComp->ActivatableAbilities.Items)
+					{
+						if (Ability.Ability->Class == UGAB_AthenaDBNO_C::StaticClass())
+						{
+							AbilitySystemComp->ServerCancelAbility(Ability.Handle, Ability.ActivationInfo);
+							AbilitySystemComp->ServerEndAbility(Ability.Handle, Ability.ActivationInfo, Ability.ActivationInfo.PredictionKeyWhenActivated);
+							AbilitySystemComp->ClientCancelAbility(Ability.Handle, Ability.ActivationInfo);
+							AbilitySystemComp->ClientEndAbility(Ability.Handle, Ability.ActivationInfo);
+							break;
+						}
+					}
+
 					bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO = false;
 					bot->CurrentAssignedDBNOBot->Pawn->OnRep_IsDBNO();
 					bot->CurrentAssignedDBNOBot->Pawn->SetHealth(30);
+					PlayerState->DeathInfo = {};
+					PlayerState->OnRep_DeathInfo();
+
 					bot->CurrentAssignedDBNOBot->Pawn->EquipWeaponDefinition(bot->Weapon, bot->WeaponGuid);
 
 					return;
@@ -370,16 +399,25 @@ namespace Bosses {
 				return;
 			}
 
+			if ((bot->tick_counter % 30 == 0) && bot->bWasReportedStuck) {
+				bot->Pawn->EquipWeaponDefinition(bot->Weapon, bot->WeaponGuid);
+				bot->bWasReportedStuck = false;
+
+				if (bot->Pawn->bIsCrouched) {
+					bot->Pawn->UnCrouch(false);
+				}
+			}
+
 			if (!Threatened && !Alerted && !LKP && bot->PatrolPath && bot->bIsPatrolling && !bot->bIsWaitingForNextPatrol && !bot->CurrentPatrolPointLoc.IsZero()) {
 				bot->PC->MoveToLocation(bot->CurrentPatrolPointLoc, 100.f, false, false, false, true, nullptr, true);
 				//bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
 			}
 
-			if (Alerted || Threatened || LKP) {
-				if (bot->Pawn->CurrentWeapon && !bot->Pawn->CurrentWeapon->WeaponData->IsA(UFortWeaponItemDefinition::StaticClass())) {
+			/*if (Alerted || Threatened || LKP) {
+				if (bot->Pawn->CurrentWeapon && bot->Pawn->CurrentWeapon->ItemEntryGuid != bot->WeaponGuid) {
 					bot->Pawn->EquipWeaponDefinition(bot->Weapon, bot->WeaponGuid);
 				}
-			}
+			}*/
 
 			if (Alerted) {
 				if (bot->CurrentTarget) {
