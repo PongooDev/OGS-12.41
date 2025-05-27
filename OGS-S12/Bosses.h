@@ -8,6 +8,11 @@ auto Math = (UKismetMathLibrary*)UKismetMathLibrary::StaticClass()->DefaultObjec
 auto Gamemode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
 auto Statics = (UGameplayStatics*)UGameplayStatics::StaticClass()->DefaultObject;
 
+enum class EBossesStrafeType {
+	StrafeLeft,
+	StrafeRight
+};
+
 std::vector<class FactionBot*> FactionBots{};
 class FactionBot
 {
@@ -68,7 +73,23 @@ public:
 	// bot is paused for some time for next patrol
 	bool bIsWaitingForNextPatrol = false;
 
+	// Time for the bot to go to the next patrol point
 	float TimeWaitingForNextPatrol = 0.f;
+
+	// Time for the bot to go back to being unaware
+	float TimeUntilUnaware = 0.f;
+
+	// Is the bot currently strafing (combat technique used by the bots)
+	bool bIsCurrentlyStrafing = false;
+
+	// The strafe type used by the bot, determines what direction
+	EBossesStrafeType StrafeType = EBossesStrafeType::StrafeLeft;
+
+	// When should the current strafe end?
+	float StrafeEndTime = 0.0f;
+
+	// the bot this bot will revive when downed, or the other way round
+	FactionBot* CurrentAssignedDBNOBot;
 
 public:
 	FactionBot(AFortPlayerPawnAthena* Pawn)
@@ -251,10 +272,10 @@ public:
 
 		if (bot->bIsPatrolling && bot->bIsWaitingForNextPatrol && Statics->GetTimeSeconds(UWorld::GetWorld()) >= bot->TimeWaitingForNextPatrol) {
 			auto BotPos = bot->Pawn->K2_GetActorLocation();
-			auto TestRot = Math->FindLookAtRotation(BotPos, bot->CurrentPatrolPointLoc);
+			auto PatrolRot = Math->FindLookAtRotation(BotPos, bot->CurrentPatrolPointLoc);
 			
-			bot->PC->SetControlRotation(TestRot);
-			bot->PC->K2_SetActorRotation(TestRot, true);
+			bot->PC->SetControlRotation(PatrolRot);
+			bot->PC->K2_SetActorRotation(PatrolRot, true);
 
 			bot->bIsWaitingForNextPatrol = false;
 		}
@@ -269,6 +290,33 @@ public:
 				bot->CurrentPatrolPointLoc = BossesBTService_Patrolling::DetermineNextPatrolPointLoc(bot);
 			}
 		}
+
+		if (bot->tick_counter % 30 == 0) {
+			float ClosestDistance = FLT_MAX;
+			FactionBot* ClosestBot = nullptr;
+
+			for (int i = 0; i < FactionBots.size(); i++) {
+				if (((AFortPlayerStateAthena*)bot->PC->PlayerState)->PlayerTeam == ((AFortPlayerStateAthena*)FactionBots[i]->PC->PlayerState)->PlayerTeam) {
+					if (bot->Pawn->bIsDBNO) {
+						if (FactionBots[i]->Pawn->bIsDBNO)
+							continue;
+					}
+					if (FactionBots[i]->Pawn == bot->Pawn)
+						continue;
+
+					float Dist = Math->Vector_Distance(bot->Pawn->K2_GetActorLocation(), FactionBots[i]->Pawn->K2_GetActorLocation());
+
+					if (Dist < ClosestDistance) {
+						ClosestDistance = Dist;
+						ClosestBot = FactionBots[i];
+					}
+				}
+			}
+
+			if (ClosestBot) {
+				bot->CurrentAssignedDBNOBot = ClosestBot;
+			}
+		}
 	}
 };
 
@@ -279,9 +327,211 @@ namespace Bosses {
 			BossesBTService_AIEvaluator Evaluator;
 			Evaluator.Tick(bot);
 
-			if (!Threatened && !Alerted && bot->PatrolPath && bot->bIsPatrolling && !bot->bIsWaitingForNextPatrol && !bot->CurrentPatrolPointLoc.IsZero()) {
-				bot->PC->MoveToLocation(bot->CurrentPatrolPointLoc, 25.f, true, false, false, true, nullptr, true);
+			if (bot->CurrentAssignedDBNOBot && bot->CurrentAssignedDBNOBot->Pawn && bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO) {
+				FVector BotPos = bot->Pawn->K2_GetActorLocation();
+				float Distance = Math->Vector_Distance(BotPos, bot->CurrentAssignedDBNOBot->Pawn->K2_GetActorLocation());
+				auto TestRot = Math->FindLookAtRotation(BotPos, bot->CurrentAssignedDBNOBot->Pawn->K2_GetActorLocation());
+
+				bot->PC->SetControlRotation(TestRot);
+				bot->PC->K2_SetActorRotation(TestRot, true);
+
+				if (Distance < 200.0f) {
+					bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO = false;
+					bot->CurrentAssignedDBNOBot->Pawn->OnRep_IsDBNO();
+					bot->CurrentAssignedDBNOBot->Pawn->SetHealth(30);
+					bot->CurrentAssignedDBNOBot->Pawn->EquipWeaponDefinition(bot->Weapon, bot->WeaponGuid);
+
+					return;
+				}
+				else {
+					bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+					//bot->PC->MoveToActor(bot->CurrentAssignedDBNOBot->PC, 100, true, false, true, nullptr, true);
+				}
+
+				bot->tick_counter++;
+				return;
+			}
+
+			if (bot->Pawn->bIsDBNO && bot->CurrentAssignedDBNOBot) {
+				FVector BotPos = bot->Pawn->K2_GetActorLocation();
+				float Distance = Math->Vector_Distance(BotPos, bot->CurrentAssignedDBNOBot->Pawn->K2_GetActorLocation());
+				auto TestRot = Math->FindLookAtRotation(BotPos, bot->CurrentAssignedDBNOBot->Pawn->K2_GetActorLocation());
+
+				bot->PC->SetControlRotation(TestRot);
+				bot->PC->K2_SetActorRotation(TestRot, true);
+
+				if (Distance < 100.0f) {}
+				else {
+					bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+					//bot->PC->MoveToActor(bot->CurrentAssignedDBNOBot->PC, 100, true, false, true, nullptr, true);
+				}
+
+				bot->tick_counter++;
+				return;
+			}
+
+			if (!Threatened && !Alerted && !LKP && bot->PatrolPath && bot->bIsPatrolling && !bot->bIsWaitingForNextPatrol && !bot->CurrentPatrolPointLoc.IsZero()) {
+				bot->PC->MoveToLocation(bot->CurrentPatrolPointLoc, 100.f, false, false, false, true, nullptr, true);
 				//bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+			}
+
+			if (Alerted || Threatened || LKP) {
+				if (bot->Pawn->CurrentWeapon && !bot->Pawn->CurrentWeapon->WeaponData->IsA(UFortWeaponItemDefinition::StaticClass())) {
+					bot->Pawn->EquipWeaponDefinition(bot->Weapon, bot->WeaponGuid);
+				}
+			}
+
+			if (Alerted) {
+				if (bot->CurrentTarget) {
+					auto BotPos = bot->Pawn->K2_GetActorLocation();
+					auto TargetPos = bot->CurrentTarget->K2_GetActorLocation();
+					float Distance = bot->Pawn->GetDistanceTo(bot->CurrentTarget);
+
+					bot->Pawn->PawnStopFire(0);
+
+					auto Rot = Math->FindLookAtRotation(BotPos, TargetPos);
+
+					if (Math->RandomBoolWithWeight(0.25f)) {
+						bot->PC->SetControlRotation(Rot);
+						bot->PC->K2_SetActorRotation(Rot, true);
+					}
+
+					bot->PC->MoveToLocation(TargetPos, 25.f, true, false, false, true, nullptr, true);
+
+					if (Math->RandomBoolWithWeight(0.25f)) {
+						float RandomXmod = Math->RandomFloatInRange(-360000, 360000);
+						float RandomYmod = Math->RandomFloatInRange(-360000, 360000);
+						//float RandomZmod = Math->RandomFloatInRange(-360000, 360000);
+
+						FVector TargetPosMod{ TargetPos.X + RandomXmod, TargetPos.Y + RandomYmod, TargetPos.Z };
+
+						Rot = Math->FindLookAtRotation(BotPos, TargetPosMod);
+
+						bot->PC->SetControlRotation(Rot);
+						bot->PC->K2_SetActorRotation(Rot, true);
+					}
+				}
+			}
+			else if (Threatened) {
+				if (bot->CurrentTarget) {
+					auto BotPos = bot->Pawn->K2_GetActorLocation();
+					auto TargetPos = bot->CurrentTarget->K2_GetActorLocation();
+					float Distance = bot->Pawn->GetDistanceTo(bot->CurrentTarget);
+
+					if (!bot->Pawn->bIsCrouched && Math->RandomBoolWithWeight(0.01f)) {
+						bot->Pawn->Crouch(false);
+					}
+					if (bot->Pawn->bIsCrouched && (bot->tick_counter % 30) == 0) {
+						bot->Pawn->UnCrouch(false);
+					}
+
+					if (Math->RandomBoolWithWeight(0.001f)) {
+						bot->Pawn->UnCrouch(false);
+						bot->Pawn->Jump();
+					}
+
+					if (!bot->bIsStressed) {
+						bot->PC->MoveToActor(bot->CurrentTarget, Math->RandomFloatInRange(400, 1000), true, false, true, nullptr, true);
+					}
+					else {
+						bot->Pawn->AddMovementInput((bot->Pawn->GetActorForwardVector() * -1.0f), 1.2f, true);
+					}
+
+					if (true) { // wouldve had a tickcounter condition here but no
+						float RandomXmod = Math->RandomFloatInRange(-180, 180);
+						float RandomYmod = Math->RandomFloatInRange(-180, 180);
+						float RandomZmod = Math->RandomFloatInRange(-180, 180);
+
+						FVector TargetPosMod{ TargetPos.X + RandomXmod, TargetPos.Y + RandomYmod, TargetPos.Z + RandomZmod };
+
+						FRotator Rot = Math->FindLookAtRotation(BotPos, TargetPosMod);
+
+						bot->PC->SetControlRotation(Rot);
+						bot->PC->K2_SetActorRotation(Rot, true);
+
+						//bot->PC->K2_SetFocalPoint(TargetPosMod); doesent fix the issue with them not aiming up or down
+					}
+
+					if (!bot->bIsCurrentlyStrafing)
+					{
+						if (UKismetMathLibrary::RandomBoolWithWeight(0.05))
+						{
+							bot->bIsCurrentlyStrafing = true;
+							if (UKismetMathLibrary::RandomBool()) {
+								bot->StrafeType = EBossesStrafeType::StrafeLeft;
+							}
+							else {
+								bot->StrafeType = EBossesStrafeType::StrafeRight;
+							}
+							bot->StrafeEndTime = Statics->GetTimeSeconds(UWorld::GetWorld()) + Math->RandomFloatInRange(2.0f, 4.0f);
+						}
+					}
+					else
+					{
+						if (Statics->GetTimeSeconds(UWorld::GetWorld()) < bot->StrafeEndTime)
+						{
+							if (bot->StrafeType == EBossesStrafeType::StrafeLeft) {
+								bot->Pawn->AddMovementInput((bot->Pawn->GetActorRightVector() * -1.0f), 1.2f, true);
+							}
+							else {
+								bot->Pawn->AddMovementInput(bot->Pawn->GetActorRightVector(), 1.2f, true);
+							}
+						}
+						else
+						{
+							bot->bIsCurrentlyStrafing = false;
+						}
+					}
+
+					if (bot->PC->LineOfSightTo(bot->CurrentTarget, BotPos, true)
+						&& Math->RandomBoolWithWeight(0.5f)) {
+						bool HasMinigun = bot->Pawn->CurrentWeapon->Name.ToString().contains("Minigun");
+						if (!HasMinigun && (bot->tick_counter % 2 != 0)) {
+							bot->Pawn->PawnStopFire(0);
+						}
+						else if (HasMinigun && (bot->tick_counter % 150 != 0)) {
+							bot->Pawn->PawnStopFire(0);
+						}
+						else {
+							bot->Pawn->PawnStartFire(0);
+						}
+					}
+					else {
+						bot->Pawn->PawnStopFire(0);
+					}
+				}
+			}
+			else if (LKP) {
+				if (bot->CurrentTarget) {
+					auto BotPos = bot->Pawn->K2_GetActorLocation();
+					auto TargetPos = bot->CurrentTarget->K2_GetActorLocation();
+					float Distance = bot->Pawn->GetDistanceTo(bot->CurrentTarget);
+
+					auto Rot = Math->FindLookAtRotation(BotPos, TargetPos);
+
+					if (Math->RandomBoolWithWeight(0.25f)) {
+						bot->PC->SetControlRotation(Rot);
+						bot->PC->K2_SetActorRotation(Rot, true);
+					}
+
+					bot->PC->MoveToActor(bot->CurrentTarget, 150, true, false, true, nullptr, true);
+
+					if (Math->RandomBoolWithWeight(0.25f)) {
+						float RandomXmod = Math->RandomFloatInRange(-360000, 360000);
+						float RandomYmod = Math->RandomFloatInRange(-360000, 360000);
+						//float RandomZmod = Math->RandomFloatInRange(-360000, 360000);
+
+						FVector TargetPosMod{ TargetPos.X + RandomXmod, TargetPos.Y + RandomYmod, TargetPos.Z };
+
+						Rot = Math->FindLookAtRotation(BotPos, TargetPosMod);
+
+						bot->PC->SetControlRotation(Rot);
+						bot->PC->K2_SetActorRotation(Rot, true);
+					}
+				}
+			}
+			else {
+				SetUnaware(bot);
 			}
 
 			bot->tick_counter++;
@@ -290,7 +540,6 @@ namespace Bosses {
 			bot->PC->CurrentAlertLevel = EAlertLevel::Unaware;
 			bot->PC->OnAlertLevelChanged(bot->AlertLevel, EAlertLevel::Unaware);
 			bot->Pawn->PawnStopFire(0);
-			bot->PC->StopMovement();
 			if (bot->PatrolPath) {
 				bot->bIsPatrolling = true;
 			}

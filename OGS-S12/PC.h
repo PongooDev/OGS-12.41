@@ -104,14 +104,17 @@ namespace PC {
 			{
 				KillerState->KillScore++;
 
-				for (size_t i = 0; i < KillerState->PlayerTeam->TeamMembers.Num(); i++)
+				if (!KillerState->bIsABot)
 				{
-					((AFortPlayerStateAthena*)KillerState->PlayerTeam->TeamMembers[i]->PlayerState)->TeamKillScore++;
-					((AFortPlayerStateAthena*)KillerState->PlayerTeam->TeamMembers[i]->PlayerState)->OnRep_TeamKillScore();
-				}
+					for (size_t i = 0; i < KillerState->PlayerTeam->TeamMembers.Num(); i++)
+					{
+						((AFortPlayerStateAthena*)KillerState->PlayerTeam->TeamMembers[i]->PlayerState)->TeamKillScore++;
+						((AFortPlayerStateAthena*)KillerState->PlayerTeam->TeamMembers[i]->PlayerState)->OnRep_TeamKillScore();
+					}
 
-				KillerState->ClientReportKill(DeadState);
-				KillerState->OnRep_Kills();
+					KillerState->ClientReportKill(DeadState);
+					KillerState->OnRep_Kills();
+				}
 
 
 				DeadState->PawnDeathLocation = DeadPC->Pawn->K2_GetActorLocation();
