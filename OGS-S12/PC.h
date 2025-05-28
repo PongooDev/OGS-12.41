@@ -297,6 +297,8 @@ namespace PC {
 				{
 					SpawnPickup(LootDrop.ItemDefinition, LootDrop.Count, LootDrop.LoadedAmmo, CorrectLocation, EFortPickupSourceTypeFlag::Container, EFortPickupSpawnSource::SupplyDrop);
 				}
+
+				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_019_SearchSupplyDrop.AccoladeId_019_SearchSupplyDrop"));
 			}
 			else
 			{
@@ -310,9 +312,12 @@ namespace PC {
 				{
 					SpawnPickup(LootDrop.ItemDefinition, LootDrop.Count, LootDrop.LoadedAmmo, CorrectLocation, EFortPickupSourceTypeFlag::Container, EFortPickupSpawnSource::SupplyDrop);
 				}
+
+				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_020_SearchLlama.AccoladeId_020_SearchLlama"));
 			}
 
-			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_019_SearchSupplyDrop.AccoladeId_019_SearchSupplyDrop"));
+			ChestsSearched[PC]++;
+			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
 		}
 		else if (PC->MyFortPawn && PC->MyFortPawn->IsInVehicle())
 		{
@@ -345,10 +350,19 @@ namespace PC {
 
 			Quests::ProgressQuest(PC, QuestsRequiredOnProfile[0], Primary_BackendName);
 		}*/ // Super Buggy Sometimes
+		else if (ReceivingActor->Class->GetName().contains("Ammo")) {
+			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_011_SearchAmmoBox.AccoladeId_011_SearchAmmoBox"));
+		}
+		else if (ReceivingActor->Class->GetName().contains("FactionChest")) {
+			ChestsSearched[PC]++;
+			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
+			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_080_OpenFactionChest.AccoladeId_080_OpenFactionChest"));
+		}
 		else if (ReceivingActor->Class->GetName().contains("Tiered_"))
 		{
 			ChestsSearched[PC]++;
 			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
+			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_007_SearchChests.AccoladeId_007_SearchChests"));
 		}
 		else if (ReceivingActor->GetName().contains("Wumba"))
 		{
