@@ -95,6 +95,8 @@ public:
         if (KillerPC && KillerPC->IsA(AFortPlayerControllerAthena::StaticClass()) && !bIsKillerABot)
         {
             KillerState->KillScore++;
+
+            Quests::GiveAccolade(KillerPC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_012_Elimination.AccoladeId_012_Elimination"));
             Quests::GiveAccolade(KillerPC, GetDefFromEvent(EAccoladeEvent::Kill, KillerState->KillScore));
 
             for (size_t i = 0; i < KillerState->PlayerTeam->TeamMembers.Num(); i++)

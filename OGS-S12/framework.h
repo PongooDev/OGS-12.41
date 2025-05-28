@@ -355,10 +355,6 @@ inline UFortAccoladeItemDefinition* GetDefFromEvent(EAccoladeEvent Event, int Co
 		{
 			Def = StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_016_Elimination_Gold.AccoladeId_016_Elimination_Gold");
 		}
-		else
-		{
-			Def = StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_012_Elimination.AccoladeId_012_Elimination");
-		}
 		break;
 	case EAccoladeEvent::Search:
 		if (!Object || !Object->Class->GetName().contains("Ammo"))

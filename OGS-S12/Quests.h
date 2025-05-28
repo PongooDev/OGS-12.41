@@ -2,11 +2,7 @@
 #include "framework.h"
 
 namespace Quests {
-	static inline std::map<UFortAccoladeItemDefinition*, bool> OnceOnlyMap;
-	static inline std::map<AFortPlayerControllerAthena*, std::vector<FFortMcpQuestObjectiveInfo>> ObjCompArray;
-	static inline std::map<UClass*, uint32> CountMap;
-
-	void GiveAccolade(AFortPlayerControllerAthena* PC, UFortAccoladeItemDefinition* Def)
+	void GiveAccolade(AFortPlayerControllerAthena* PC, UFortAccoladeItemDefinition* Def, UFortQuestItemDefinition* QuestDef = nullptr)
 	{
 		if (!PC || !Def) return;
 
@@ -23,6 +19,9 @@ namespace Quests {
 		EventInfo.EventName = Def->Name;
 		EventInfo.EventXpValue = Def->GetAccoladeXpValue();
 		EventInfo.Priority = Def->Priority;
+		if (QuestDef) {
+			EventInfo.QuestDef = QuestDef;
+		}
 		EventInfo.SimulatedText = Def->GetShortDescription();
 		EventInfo.RestedValuePortion = EventInfo.EventXpValue;
 		EventInfo.RestedXPRemaining = EventInfo.EventXpValue;
@@ -85,9 +84,133 @@ namespace Quests {
 		PC->XPComponent->HighPrioXPEvent(Entry);
 	}
 
+	bool ContainsTag(FGameplayTagContainer Container, FName Tag)
+	{
+		for (auto tag : Container.GameplayTags)
+		{
+			if (tag.TagName.ComparisonIndex == Tag.ComparisonIndex)
+				return true;
+		}
+		return false;
+	}
+
 	void SendStatEvent(UFortQuestManager* ManagerComp, UObject* TargetObject, FGameplayTagContainer& AdditionalSourceTags, FGameplayTagContainer& TargetTags, bool* QuestActive, bool* QuestCompleted, int32 Count, EFortQuestObjectiveStatEvent StatEvent)
 	{
-		
+		if (!ManagerComp || !TargetObject) {
+			Log("ManagerComp or TargetObject is nullptr!");
+		}
+
+		auto PC = (AFortPlayerControllerAthena*)ManagerComp->GetPlayerControllerBP();
+		if (!PC) {
+			Log("PC doesent exist!");
+			return;
+		}
+		else {
+			Log("PC does exist!");
+		}
+
+		FGameplayTagContainer Source;
+		FGameplayTagContainer Context;
+		ManagerComp->GetSourceAndContextTags(&Source, &Context);
+		ManagerComp->AppendTemporaryRelevancyTags(Source, Context, TargetTags);
+
+		for (auto tag : Source.GameplayTags)
+		{
+			bool contains = false;
+			for (auto Tag : AdditionalSourceTags.GameplayTags)
+			{
+				if (Tag.TagName.ComparisonIndex == tag.TagName.ComparisonIndex)
+				{
+					contains = true;
+					break;
+				}
+			}
+			if (!contains) {
+				AdditionalSourceTags.GameplayTags.Add(tag);
+			}
+		}
+
+		for (auto tag : Source.ParentTags)
+		{
+			bool contains = false;
+			for (auto Tag : AdditionalSourceTags.ParentTags)
+			{
+				if (Tag.TagName.ComparisonIndex == tag.TagName.ComparisonIndex)
+				{
+					contains = true;
+					break;
+				}
+			}
+			if (!contains)
+				AdditionalSourceTags.ParentTags.Add(tag);
+		}
+
+		/*if (StatEvent == EFortQuestObjectiveStatEvent::Kill)
+		{
+			int Kills = ((AFortPlayerStateAthena*)ManagerComp->GetPlayerControllerBP()->PlayerState)->KillScore + 1;
+
+			GiveAccolade((AFortPlayerControllerAthena*)PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_012_Elimination.AccoladeId_012_Elimination"));
+			GiveAccolade((AFortPlayerControllerAthena*)PC, GetDefFromEvent(EAccoladeEvent::Kill, Kills));
+		}*/
+
+		for (auto Quest : ManagerComp->CurrentQuests)
+		{
+			auto QuestDef = Quest->GetQuestDefinitionBP();
+			if (!QuestDef) {
+				Log("no QuestDef");
+				continue;
+			}
+
+			if (ManagerComp->HasCompletedQuest(QuestDef))
+				continue;
+
+			auto PrereqQuest = QuestDef->GetPrerequisiteQuest();
+
+			if (PrereqQuest && !ManagerComp->HasCompletedQuest(PrereqQuest))
+				continue;
+
+			if (QuestDef->PrerequisiteObjective.DataTable && QuestDef->PrerequisiteObjective.RowName.ComparisonIndex && !ManagerComp->HasCompletedObjective(QuestDef, QuestDef->PrerequisiteObjective))
+				return;
+
+			for (FFortMcpQuestObjectiveInfo& Objective : QuestDef->Objectives) {
+				/*if (Objective.BackendName) {
+					Log("BackendName dont exist!");
+					continue;
+				}*/
+
+				if (/*Objective.InlineObjectiveStats.Num() <= 0 || */ManagerComp->HasCompletedObjectiveWithName(QuestDef, Objective.BackendName))
+					continue;
+
+
+				bool bFoundCorrectQuest = false;
+
+				FDataTableRowHandle ObjectiveStatHandle = Objective.ObjectiveStatHandle;
+				UDataTable* DataTable = ObjectiveStatHandle.DataTable;
+				if (!DataTable)
+					continue;
+
+				auto& RowMap = DataTable->RowMap;
+				FFortQuestObjectiveStatTableRow* Row = nullptr;
+
+				if (RowMap.Num() <= 0)
+					continue;
+
+				for (int i = 0; i < RowMap.Num(); ++i)
+				{
+					auto& Pair = RowMap[i];
+					if (Pair.Key().ToString() == ObjectiveStatHandle.RowName.ToString())
+					{
+						Log("Wow!");
+						bFoundCorrectQuest = true;
+						break;
+					}
+				}
+
+				if (bFoundCorrectQuest) {
+					return ProgressQuest(PC, QuestDef, Objective.BackendName);
+				}
+			}
+		}
 	}
 
 	static inline void (*SendComplexCustomStatEventOG)(UFortQuestManager* ManagerComp, UObject* TargetObject, FGameplayTagContainer& AdditionalSourceTags, FGameplayTagContainer& TargetTags, bool* QuestActive, bool* QuestCompleted, int32 Count);
@@ -118,8 +241,22 @@ namespace Quests {
 		return SendComplexCustomStatEventOG(QuestManager, TargetObject, AdditionalSourceTags, TargetTags, QuestActive, QuestCompleted, Count);
 	}*/
 
+	static bool GetQuestContext(UFortQuestManager* QuestManager, EFortQuestObjectiveStatEvent SE) {
+		Log("test!");
+		Log(QuestManager->GetPlayerControllerBP()->InteractionComponent->InteractActor->GetName());
+		FGameplayTagContainer SourceTags;
+		FGameplayTagContainer ContextTags;
+		FGameplayTagContainer PlaylistContextTags;
+
+		QuestManager->GetSourceAndContextTags(&SourceTags, &ContextTags);
+		for (auto& Tag : SourceTags.GameplayTags)
+			Log(Tag.TagName.ToString());
+		return true;
+	}
+
 	void Hook() {
-		//MH_CreateHook((LPVOID)(ImageBase + 0x23B1420), SendComplexCustomStatEvent, (LPVOID*)&SendComplexCustomStatEventOG);
+		MH_CreateHook((LPVOID)(ImageBase + 0x23B1420), SendComplexCustomStatEvent, (LPVOID*)&SendComplexCustomStatEventOG);
+		MH_CreateHook((LPVOID)(ImageBase + 0x23A5180), GetQuestContext, nullptr);
 
 		Log("Quests Hooked!");
 	}
