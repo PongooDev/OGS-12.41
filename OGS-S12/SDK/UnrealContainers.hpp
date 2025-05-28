@@ -225,7 +225,6 @@ namespace UC
 		inline const ValueType& Value() const { return Second; }
 	};
 
-
 	static void* (*Realloc)(void* Ptr, SIZE_T Count, uint32 Alignment) = decltype(Realloc)(__int64(GetModuleHandleW(0)) + 0x2B409C0);
 
 	static void* (*FreeMem)(void* a1) = decltype(FreeMem)(__int64(GetModuleHandleW(0)) + 0x2B31FA0);

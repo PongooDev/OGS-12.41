@@ -3,6 +3,7 @@
 #include "Inventory.h"
 #include "Abilities.h"
 #include "Bots.h"
+#include "Quests.h"
 
 namespace GameMode {
 	uint8 NextIdx = 3;
@@ -157,6 +158,15 @@ namespace GameMode {
 
 			if (!ServerListening) {
 				ServerListening = true;
+
+				if (Globals::bBotsEnabled) {
+					CIDs = GetAllObjectsOfClass<UAthenaCharacterItemDefinition>();
+					Pickaxes = GetAllObjectsOfClass<UAthenaPickaxeItemDefinition>();
+					Backpacks = GetAllObjectsOfClass<UAthenaBackpackItemDefinition>();
+					Gliders = GetAllObjectsOfClass<UAthenaGliderItemDefinition>();
+					Contrails = GetAllObjectsOfClass<UAthenaSkyDiveContrailItemDefinition>();
+					Dances = GetAllObjectsOfClass<UAthenaDanceItemDefinition>();
+				}
 
 				GameState->OnRep_CurrentPlaylistId();
 				GameState->OnRep_CurrentPlaylistInfo();
@@ -342,6 +352,26 @@ namespace GameMode {
 			FactionBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
 		}
 
+		for (auto PlayerBot : PlayerBotArray)
+		{
+			static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+			PlayerBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusLocked);
+			PlayerBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+
+			static auto Name4 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_JumpOffBus_ExecutionStatus"));
+			static auto Name3 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsInBus"));
+			PlayerBot->PC->Blackboard->SetValueAsBool(Name3, true);
+			PlayerBot->PC->Blackboard->SetValueAsEnum(Name4, (uint8)EExecutionStatus::ExecutionAllowed);
+		}
+
+		if (Globals::bBotsEnabled) {
+			for (size_t i = 0; i < PlayerBotArray.size(); i++)
+			{
+				PlayerBotArray[i]->BotState = EBotState::PreBus; // Proper!
+			}
+		}
+
 		return StartAircraftPhaseOG(GameMode, a2);
 	}
 
@@ -349,6 +379,17 @@ namespace GameMode {
 	void OnAircraftExitedDropZone(AFortGameModeAthena* GameMode, AFortAthenaAircraft* FortAthenaAircraft)
 	{
 		Log("OnAircraftExitedDropZone!");
+
+		if (Globals::bBotsEnabled) { // kick all bots out of the bus
+			for (size_t i = 0; i < PlayerBotArray.size(); i++)
+			{
+				AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
+
+				PlayerBotArray[i]->Pawn->K2_TeleportTo(GameState->GetAircraft(0)->K2_GetActorLocation(), {});
+				PlayerBotArray[i]->Pawn->BeginSkydiving(true);
+				PlayerBotArray[i]->BotState = EBotState::Skydiving;
+			}
+		}
 		
 		return OriginalOnAircraftExitedDropZone(GameMode, FortAthenaAircraft);
 	}
@@ -366,12 +407,36 @@ namespace GameMode {
 			FactionBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
 		}
 
+		for (auto PlayerBot : PlayerBotArray)
+		{
+			static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+			PlayerBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusFlying);
+			PlayerBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+
+			static auto Name9 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsInBus"));
+
+			PlayerBot->PC->Blackboard->SetValueAsBool(Name9, true);
+		}
+
+		if (Globals::bBotsEnabled) {
+			for (size_t i = 0; i < PlayerBotArray.size(); i++)
+			{
+				PlayerBotArray[i]->BotState = EBotState::Bus;
+			}
+		}
+
 		return OnAircraftEnteredDropZoneOG(a1);
 	}
 
 	void (*StormOG)(AFortGameModeAthena* GameMode, int32 ZoneIndex);
 	void __fastcall Storm(AFortGameModeAthena* GameMode, int32 ZoneIndex)
 	{
+		for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+		{
+			Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_SurviveStormCircle.AccoladeID_SurviveStormCircle"));
+		}
+
 		return StormOG(GameMode, ZoneIndex);
 	}
 

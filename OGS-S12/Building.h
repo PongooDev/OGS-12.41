@@ -1,6 +1,7 @@
 #pragma once
 #include "framework.h"
 #include "Inventory.h"
+#include "Quests.h"
 
 namespace Building {
 	inline void ServerCreateBuildingActor(AFortPlayerControllerAthena* PC, FCreateBuildingActorData CreateBuildingData)
@@ -159,6 +160,7 @@ namespace Building {
 
 					NumWeakSpots[InstigatedBy]++;
 					if (NumWeakSpots[InstigatedBy] == 5) {
+						Quests::GiveAccolade(InstigatedBy, AccoladeDef);
 						NumWeakSpots[InstigatedBy] = 0;
 					}
 				}

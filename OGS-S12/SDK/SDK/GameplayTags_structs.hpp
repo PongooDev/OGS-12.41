@@ -115,6 +115,57 @@ struct FGameplayTagContainer final
 public:
 	TArray<struct FGameplayTag>                   GameplayTags;                                      // 0x0000(0x0010)(BlueprintVisible, ZeroConstructor, SaveGame, Protected, NativeAccessSpecifierProtected)
 	TArray<struct FGameplayTag>                   ParentTags;                                        // 0x0010(0x0010)(ZeroConstructor, Transient, Protected, NativeAccessSpecifierProtected)
+
+public:
+	bool HasTag(const FGameplayTag& TagToCheck) const
+	{
+		for (auto& Tag : GameplayTags) {
+			if (Tag.TagName == TagToCheck.TagName) {
+				return true;
+			}
+		}
+		for (auto& Tag : ParentTags) {
+			if (Tag.TagName == TagToCheck.TagName) {
+				return true;
+			}
+		}
+		return false;
+	}
+public:
+	bool HasAll(const FGameplayTagContainer& ContainerToCheck) const
+	{
+		for (auto& Tag : ContainerToCheck.GameplayTags) {
+			bool Found2 = false;
+			for (auto& Tag2 : GameplayTags) {
+				if (Tag2.TagName == Tag.TagName) {
+					Found2 = true;
+					break;
+				}
+			}
+			if (!Found2) for (auto& Tag2 : ParentTags) {
+				if (Tag2.TagName == Tag.TagName) {
+					Found2 = true;
+					break;
+				}
+			}
+			if (!Found2) return false;
+		}
+		return true;
+	}
+
+	void AppendTags(const FGameplayTagContainer& Other)
+	{
+		for (const auto& GameplayTag : Other.GameplayTags)
+		{
+			if (!HasTag(GameplayTag))
+				GameplayTags.Add(GameplayTag);
+		}
+		for (const auto& ParentTag : Other.ParentTags)
+		{
+			if (!HasTag(ParentTag))
+				ParentTags.Add(ParentTag);
+		}
+	}
 };
 static_assert(alignof(FGameplayTagContainer) == 0x000008, "Wrong alignment on FGameplayTagContainer");
 static_assert(sizeof(FGameplayTagContainer) == 0x000020, "Wrong size on FGameplayTagContainer");

@@ -142,6 +142,7 @@
   <ItemGroup>
     <ClInclude Include="Abilities.h" />
     <ClInclude Include="Bosses.h" />
+    <ClInclude Include="BotNames.h" />
     <ClInclude Include="Bots.h" />
     <ClInclude Include="Building.h" />
     <ClInclude Include="framework.h" />
@@ -152,6 +153,8 @@
     <ClInclude Include="Misc.h" />
     <ClInclude Include="Net.h" />
     <ClInclude Include="PC.h" />
+    <ClInclude Include="PlayerBots.h" />
+    <ClInclude Include="Quests.h" />
     <ClInclude Include="SDK\PropertyFixup.hpp" />
     <ClInclude Include="SDK\SDK.hpp" />
     <ClInclude Include="SDK\SDK\AIModule_classes.hpp" />

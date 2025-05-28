@@ -24,7 +24,7 @@ namespace Tick {
 		ServerReplicateActors(Driver->ReplicationDriver);
 
 		if (GameState->GamePhase == EAthenaGamePhase::Warmup
-			&& (GameMode->NumPlayers + GameMode->NumBots) >= Globals::MinPlayersForEarlyStart
+			&& (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num()) >= Globals::MinPlayersForEarlyStart
 			&& GameState->WarmupCountdownEndTime > UGameplayStatics::GetTimeSeconds(UWorld::GetWorld()) + 10.f) {
 
 			auto TS = UGameplayStatics::GetTimeSeconds(UWorld::GetWorld());
@@ -34,6 +34,32 @@ namespace Tick {
 			GameMode->WarmupCountdownDuration = DR;
 			GameState->WarmupCountdownStartTime = TS;
 			GameMode->WarmupEarlyCountdownDuration = DR;
+		}
+
+		if (Globals::bBotsEnabled && !Globals::bEventEnabled) {
+			static bool InitialisedPlayerStarts = false;
+			if (!InitialisedPlayerStarts)
+			{
+				UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), AFortPlayerStartWarmup::StaticClass(), &PlayerStarts);
+				InitialisedPlayerStarts = true;
+			}
+
+			if (((AFortGameStateAthena*)UWorld::GetWorld()->GameState)->GamePhase == EAthenaGamePhase::Warmup &&
+				GameMode->AlivePlayers.Num() > 0
+				&& (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num()) < GameMode->GameSession->MaxPlayers
+				&& GameMode->AliveBots.Num() < Globals::MaxBotsToSpawn
+				&& GameState->WarmupCountdownEndTime > UGameplayStatics::GetTimeSeconds(UWorld::GetWorld()))
+			{
+				if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.05f))
+				{
+					AActor* SpawnLocator = PlayerStarts[UKismetMathLibrary::GetDefaultObj()->RandomIntegerInRange(0, PlayerStarts.Num() - 1)];
+
+					if (SpawnLocator)
+					{
+						PlayerBots::SpawnPlayerBots(SpawnLocator);
+					}
+				}
+			}
 		}
 
 		if (GameState->WarmupCountdownEndTime - UGameplayStatics::GetTimeSeconds(UWorld::GetWorld()) <= 0 && GameState->GamePhase == EAthenaGamePhase::Warmup)
@@ -46,9 +72,12 @@ namespace Tick {
 			Bosses::TickBots();
 		}
 
+		if (Globals::bBotsEnabled && !Globals::bEventEnabled) {
+			PlayerBots::Tick();
+		}
+
 		return TickFlushOG(Driver, DeltaTime);
 	}
-
 
 	inline float GetMaxTickRate()
 	{

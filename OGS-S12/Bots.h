@@ -3,6 +3,7 @@
 #include "Looting.h"
 
 #include "Bosses.h"
+#include "PlayerBots.h"
 
 namespace Bots {
 	AFortPlayerPawnAthena* (*SpawnBotOG)(UFortServerBotManagerAthena* BotManager, FVector SpawnLoc, FRotator SpawnRot, UFortAthenaAIBotCustomizationData* BotData, FFortAthenaAIBotRunTimeCustomizationData RuntimeBotData);
@@ -146,8 +147,11 @@ namespace Bots {
 				}
 			}
 		}
+		if (KilledBot) {
+			Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_075_ElimMang.AccoladeId_075_ElimMang"));
+		}
 
-		/*if (InstigatedBy && DamageCauser) {
+		if (InstigatedBy && DamageCauser) {
 			for (auto& bot : PlayerBotArray)
 			{
 				if (bot && bot->PC && bot->PC == PC && !bot->bIsDead)
@@ -156,7 +160,7 @@ namespace Bots {
 					break;
 				}
 			}
-		}*/
+		}
 
 		PC->PlayerBotPawn->SetMaxShield(0);
 		for (int32 i = 0; i < PC->Inventory->Inventory.ReplicatedEntries.Num(); i++)

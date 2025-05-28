@@ -295,7 +295,7 @@ public:
 class FName final
 {
 public:
-	static inline void*                           AppendString = nullptr;                            // 0x0000(0x0004)(NOT AUTO-GENERATED PROPERTY)
+	static inline void* AppendString = nullptr;                            // 0x0000(0x0004)(NOT AUTO-GENERATED PROPERTY)
 
 	int32                                         ComparisonIndex;                                   // 0x0000(0x0004)(NOT AUTO-GENERATED PROPERTY)
 	int32                                         Number;                                            // 0x0004(0x0004)(NOT AUTO-GENERATED PROPERTY)
@@ -305,14 +305,16 @@ public:
 	FName()
 		: ComparisonIndex(0),
 		Number(0)
-	{}
+	{
+	}
 
 	FName(int32 InComparisonIndex, int32 InNumber)
 		: ComparisonIndex(InComparisonIndex),
 		Number(InNumber)
-	{}
+	{
+	}
 
-	FName(const FString& InName);
+	FName(const FString& InName) {}
 
 	static void InitInternal()
 	{
@@ -327,34 +329,34 @@ public:
 	{
 		return ComparisonIndex;
 	}
-	
+
 	std::string GetRawString() const
 	{
 		thread_local FAllocatedString TempString(1024);
-	
+
 		if (!AppendString)
 			InitInternal();
-	
+
 		InSDKUtils::CallGameFunction(reinterpret_cast<void(*)(const FName*, FString&)>(AppendString), this, TempString);
-	
+
 		std::string OutputString = TempString.ToString();
 		TempString.Clear();
-	
+
 		return OutputString;
 	}
-	
+
 	std::string ToString() const
 	{
 		std::string OutputString = GetRawString();
-	
+
 		size_t pos = OutputString.rfind('/');
-	
+
 		if (pos == std::string::npos)
 			return OutputString;
-	
+
 		return OutputString.substr(pos + 1);
 	}
-	
+
 	bool operator==(const FName& Other) const
 	{
 		return ComparisonIndex == Other.ComparisonIndex && Number == Other.Number;

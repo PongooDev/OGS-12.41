@@ -5,6 +5,7 @@
 #include "Inventory.h"
 #include "Building.h"
 #include "Looting.h"
+#include "Quests.h"
 #include "Misc.h"
 #include "Net.h"
 #include "Tick.h"
@@ -36,6 +37,7 @@ void Hook() {
     Inventory::Hook();
     Building::Hook();
     Looting::Hook();
+    Quests::Hook();
 
     Misc::Hook();
     Net::Hook();
