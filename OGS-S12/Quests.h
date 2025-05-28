@@ -53,15 +53,12 @@ namespace Quests {
 		}
 		auto QuestItem = PC->GetQuestManager(ESubGame::Athena)->GetQuestWithDefinition(QuestDef);
 
-		int32 XPCount = 0;
-
+		int32 XPCount = 200;
 
 		if (auto RewardsTable = QuestDef->RewardsTable)
 		{
 			static auto Name = FName(L"Default");
-
 			auto DefaultRow = RewardsTable->Search([](FName& RName, uint8* Row) { return RName == Name; });
-
 			XPCount = (*(FFortQuestRewardTableRow**)DefaultRow)->Quantity;
 		}
 
