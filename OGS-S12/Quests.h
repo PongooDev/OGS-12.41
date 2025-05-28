@@ -178,7 +178,6 @@ namespace Quests {
 				if (/*Objective.InlineObjectiveStats.Num() <= 0 || */ManagerComp->HasCompletedObjectiveWithName(QuestDef, Objective.BackendName))
 					continue;
 
-
 				bool bFoundCorrectQuest = false;
 
 				FDataTableRowHandle ObjectiveStatHandle = Objective.ObjectiveStatHandle;
