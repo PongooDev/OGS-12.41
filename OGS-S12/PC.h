@@ -336,21 +336,18 @@ namespace PC {
 				}
 			}
 		}
-		else if (ReceivingActor->IsA(AthenaQuestBGAClass))
+		/*else if (ReceivingActor->IsA(AthenaQuestBGAClass))
 		{
 			ReceivingActor->ProcessEvent(ReceivingActor->Class->GetFunction("AthenaQuest_BGA_C", "BindToQuestManagerForQuestUpdate"), &PC);
 			TArray<UFortQuestItemDefinition*>& QuestsRequiredOnProfile = *(TArray<UFortQuestItemDefinition*>*)(__int64(ReceivingActor) + 0x850);
 			FName& Primary_BackendName = *(FName*)(__int64(ReceivingActor) + 0x860);
 
 			Quests::ProgressQuest(PC, QuestsRequiredOnProfile[0], Primary_BackendName);
-		}
+		}*/ // Super Buggy Sometimes
 		else if (ReceivingActor->Class->GetName().contains("Tiered_"))
 		{
 			ChestsSearched[PC]++;
 			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
-		}
-		else if (ReceivingActor->IsA(GameState->MapInfo->LlamaClass)) {
-			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_020_SearchLlama.AccoladeId_020_SearchLlama"));
 		}
 		else if (ReceivingActor->GetName().contains("Wumba"))
 		{
