@@ -101,5 +101,6 @@ inline std::vector<std::string> BotDisplayNames = {
     "ParanoidCactus",
     "ThermalDragon39",
     "OldWaterBottle28",
-    "LazarLazar."
+    "LazarLazar.",
+    "MrFreshAsian."
 };

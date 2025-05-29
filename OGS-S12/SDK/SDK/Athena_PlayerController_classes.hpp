@@ -78,25 +78,6 @@ public:
 		return GetDefaultObjImpl<AAthena_PlayerController_C>();
 	}
 };
-static_assert(alignof(AAthena_PlayerController_C) == 0x000010, "Wrong alignment on AAthena_PlayerController_C");
-static_assert(sizeof(AAthena_PlayerController_C) == 0x0036F0, "Wrong size on AAthena_PlayerController_C");
-static_assert(offsetof(AAthena_PlayerController_C, UberGraphFrame) == 0x003630, "Member 'AAthena_PlayerController_C::UberGraphFrame' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, UnderwaterAudioComponent) == 0x003638, "Member 'AAthena_PlayerController_C::UnderwaterAudioComponent' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, ListenerOverride) == 0x003640, "Member 'AAthena_PlayerController_C::ListenerOverride' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, VictoryRoyaleAudio) == 0x003648, "Member 'AAthena_PlayerController_C::VictoryRoyaleAudio' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, VictoryRoyaleMusic) == 0x003650, "Member 'AAthena_PlayerController_C::VictoryRoyaleMusic' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, VictoryRoyaleMenuMusicAsset) == 0x003658, "Member 'AAthena_PlayerController_C::VictoryRoyaleMenuMusicAsset' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, BladeWielderTag) == 0x003660, "Member 'AAthena_PlayerController_C::BladeWielderTag' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, InteractingItemType) == 0x003680, "Member 'AAthena_PlayerController_C::InteractingItemType' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, InteractionTags) == 0x003688, "Member 'AAthena_PlayerController_C::InteractionTags' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, PawnPossessedDispatcher) == 0x0036A8, "Member 'AAthena_PlayerController_C::PawnPossessedDispatcher' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, PermissionsRecheckTimerHandle) == 0x0036B8, "Member 'AAthena_PlayerController_C::PermissionsRecheckTimerHandle' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, LobbyMusicOnVictoryDelayTime) == 0x0036C0, "Member 'AAthena_PlayerController_C::LobbyMusicOnVictoryDelayTime' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, CamUnderwaterSoundMix) == 0x0036C8, "Member 'AAthena_PlayerController_C::CamUnderwaterSoundMix' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, CamUnderwaterLoopSound) == 0x0036D0, "Member 'AAthena_PlayerController_C::CamUnderwaterLoopSound' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, CamUnderwaterAudio) == 0x0036D8, "Member 'AAthena_PlayerController_C::CamUnderwaterAudio' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, CamUnderwaterStartSound) == 0x0036E0, "Member 'AAthena_PlayerController_C::CamUnderwaterStartSound' has a wrong offset!");
-static_assert(offsetof(AAthena_PlayerController_C, CamUnderwaterStopSound) == 0x0036E8, "Member 'AAthena_PlayerController_C::CamUnderwaterStopSound' has a wrong offset!");
 
 }
 

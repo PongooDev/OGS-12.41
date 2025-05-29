@@ -7,6 +7,19 @@
 
 namespace PC {
 	bool bFirstElimTriggered = false;
+	bool bFirstEliminated = false;
+
+	bool bFirstChestSearched = false;
+	bool bFirstSupplyDropSearched = false;
+
+	// The accolades i need to do (there is way too many accolades so these are just the main ones i want completed)
+	// TODO: Teamscore Accolades (029, 030, 031)
+	// TODO: Damage Accolades (too many to list)
+	// TODO: Upgrade Bench Accolades (064)
+	// TODO: First Upgrade (071, 072)
+	// TODO: First Fished Item (071)
+	// TODO: Shakedown (076, 077)
+	// TODO: IDK WHAT THESE ONES ARE (073, 074)
 
 	void (*ServerReadyToStartMatchOG)(AFortPlayerControllerAthena* PC);
 	void ServerReadyToStartMatch(AFortPlayerControllerAthena* PC)
@@ -85,6 +98,11 @@ namespace PC {
 		AFortPlayerPawnAthena* KillerPawn = (AFortPlayerPawnAthena*)DeathReport.KillerPawn;
 		AFortPlayerStateAthena* KillerState = (AFortPlayerStateAthena*)DeathReport.KillerPlayerState;
 
+		if (DeadPC && bFirstEliminated) {
+			bFirstEliminated = true;
+			Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_First_Death.AccoladeID_First_Death"));
+		}
+
 		static bool Won = false;
 
 		if (!GameState->IsRespawningAllowed(DeadState))
@@ -124,6 +142,8 @@ namespace PC {
 
 				if (!KillerState->bIsABot)
 				{
+					AFortPlayerControllerAthena* KillerPC = (AFortPlayerControllerAthena*)KillerState->GetOwner();
+
 					if (!bFirstElimTriggered) {
 						Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_017_First_Elimination.AccoladeId_017_First_Elimination"));
 						bFirstElimTriggered = true;
@@ -132,29 +152,10 @@ namespace PC {
 					Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_012_Elimination.AccoladeId_012_Elimination"));
 					Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, GetDefFromEvent(EAccoladeEvent::Kill, KillerState->KillScore));
 
-					AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
-					if (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num() == 50)
-					{
-						for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
-						{
-							Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_026_Survival_Default_Bronze.AccoladeId_026_Survival_Default_Bronze"));
-						}
-					}
-					if (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num() == 25)
-					{
-						for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
-						{
-							Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_027_Survival_Default_Silver.AccoladeId_027_Survival_Default_Silver"));
-						}
-					}
-					if (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num() == 10)
-					{
-						for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
-						{
-							Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_028_Survival_Default_Gold.AccoladeId_028_Survival_Default_Gold"));
-						}
-					}
+					// giving assist accolade cuz idfk how to track assists
+					Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_013_Assist.AccoladeId_013_Assist"));
 
+					AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
 					float Distance = DeathInfo.Distance / 100.0f;
 
 					if (Distance >= 100.0f && Distance < 150.0f)
@@ -172,6 +173,17 @@ namespace PC {
 					else if (Distance >= 250.0f)
 					{
 						Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_053_ImpossibleShot.AccoladeId_053_ImpossibleShot")); // 250+m accolade
+					}
+
+					if (KillerPC) {
+						float CurrentTime = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
+
+						if (UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld()) > KillerPC->LastKillTimeWindow) {
+							KillerPC->KillsInKillTimeWindow = 0;
+							KillerPC->LastRecordedKillsInKillTimeWindow = 0;
+						}
+						KillerPC->LastKillTimeWindow = CurrentTime + 10.f;
+						KillerPC->KillsInKillTimeWindow++;
 					}
 				}
 
@@ -314,6 +326,11 @@ namespace PC {
 				}
 
 				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_019_SearchSupplyDrop.AccoladeId_019_SearchSupplyDrop"));
+			
+				if (!bFirstSupplyDropSearched) {
+					bFirstSupplyDropSearched = true;
+					Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_070_FirstSearchedSupplyDrop.AccoladeId_070_FirstSearchedSupplyDrop"));
+				}
 			}
 
 			ChestsSearched[PC]++;
@@ -357,12 +374,22 @@ namespace PC {
 			ChestsSearched[PC]++;
 			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
 			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_080_OpenFactionChest.AccoladeId_080_OpenFactionChest"));
+
+			if (!bFirstChestSearched) {
+				bFirstChestSearched = true;
+				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_069_FirstSearchedChest.AccoladeId_069_FirstSearchedChest"));
+			}
 		}
 		else if (ReceivingActor->Class->GetName().contains("Tiered_"))
 		{
 			ChestsSearched[PC]++;
 			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
 			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_007_SearchChests.AccoladeId_007_SearchChests"));
+
+			if (!bFirstChestSearched) {
+				bFirstChestSearched = true;
+				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_069_FirstSearchedChest.AccoladeId_069_FirstSearchedChest"));
+			}
 		}
 		else if (ReceivingActor->GetName().contains("Wumba"))
 		{
@@ -670,6 +697,7 @@ namespace PC {
 		if (!Pawn || !Instigator)
 			return;
 
+		// TODO: RevivePlayer accolades (022, 023, 024, 025)
 		AFortPlayerControllerAthena* PC = (AFortPlayerControllerAthena*)Pawn->Controller;
 		if (!PC || !PC->PlayerState)
 			return;

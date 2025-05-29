@@ -437,6 +437,13 @@ namespace GameMode {
 			Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_SurviveStormCircle.AccoladeID_SurviveStormCircle"));
 		}
 
+		if (Globals::bBotsEnabled) {
+			for (size_t i = 0; i < PlayerBotArray.size(); i++)
+			{
+				PlayerBotArray[i]->BotState = EBotState::MovingToSafeZone; // i dont know the best way to get the bots to move to zone tbh
+			}
+		}
+
 		return StormOG(GameMode, ZoneIndex);
 	}
 

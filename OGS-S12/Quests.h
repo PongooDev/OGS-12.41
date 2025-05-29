@@ -53,7 +53,7 @@ namespace Quests {
 		}
 		auto QuestItem = PC->GetQuestManager(ESubGame::Athena)->GetQuestWithDefinition(QuestDef);
 
-		int32 XPCount = 1200;
+		int32 XPCount = 20;
 
 		if (auto RewardsTable = QuestDef->RewardsTable)
 		{

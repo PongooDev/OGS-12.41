@@ -21,7 +21,14 @@ enum class EBotState : uint8 {
     Landed,
     Fleeing,
     Looting,
-    LookingForPlayers
+    LookingForPlayers,
+    MovingToSafeZone,
+    Stuck
+};
+
+enum class EBotStrafeType {
+    StrafeLeft,
+    StrafeRight
 };
 
 std::vector<class PlayerBot*> PlayerBotArray{};
@@ -43,14 +50,32 @@ public:
     // The current botstate, has different behaviours for different states
     EBotState BotState = EBotState::Warmup;
 
+    // The cached botstate, usually if a botstate needs to revert back to the previous one
+    EBotState CachedBotState = EBotState::Warmup;
+
+    // The building that the bot collided with (doesent even works smd)
+    ABuildingActor* StuckBuildingActor = nullptr;
+
     // The displayname of the bot
     FString DisplayName = L"Bot";
+
+    // Is the bot stressed, will be determined every tick.
+    bool bIsStressed = false;
 
     // Is the bot dead, basically marking the bot to be removed from the playerbotarray later
     bool bIsDead = false;
 
     // Has the bot thanked the bus driver
     bool bHasThankedBusDriver = false;
+
+    // Is the bot currently strafing (combat technique & Unstuck method)
+    bool bIsCurrentlyStrafing = false;
+
+    // The strafe type used by the bot, determines what direction
+    EBotStrafeType StrafeType = EBotStrafeType::StrafeLeft;
+
+    // When should the current strafe end?
+    float StrafeEndTime = 0.0f;
 
 public:
     void OnDied(AFortPlayerStateAthena* KillerState, AActor* DamageCauser, FName BoneName)
@@ -98,6 +123,9 @@ public:
 
             Quests::GiveAccolade(KillerPC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_012_Elimination.AccoladeId_012_Elimination"));
             Quests::GiveAccolade(KillerPC, GetDefFromEvent(EAccoladeEvent::Kill, KillerState->KillScore));
+
+            // giving assist accolade cuz idfk how to track assists
+            Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_013_Assist.AccoladeId_013_Assist"));
 
             for (size_t i = 0; i < KillerState->PlayerTeam->TeamMembers.Num(); i++)
             {
@@ -166,33 +194,53 @@ public:
 
         if (BoneName.ToString() == "head")
         {
+            KillerPC->HeadShots++;
             Quests::GiveAccolade(KillerPC, Acc_Headshot); // headshot accolade
+
+            if (KillerPC->HeadShots == 4) {
+                Quests::GiveAccolade(KillerPC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_049_Headhunter.AccoladeId_049_Headhunter"));
+            }
         }
 
-        AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
-        if (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num() == 50)
-        {
-            for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
-            {
-                Quests::GiveAccolade(GameMode->AlivePlayers[i], Acc_Survival_Bronze);
+        if (KillerPC) {
+            float CurrentTime = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
+
+            if (UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld()) > KillerPC->LastKillTimeWindow) {
+                KillerPC->KillsInKillTimeWindow = 0;
+                KillerPC->LastRecordedKillsInKillTimeWindow = 0;
             }
-        }
-        if (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num() == 25)
-        {
-            for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
-            {
-                Quests::GiveAccolade(GameMode->AlivePlayers[i], Acc_Survival_Silver);
-            }
-        }
-        if (GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num() == 10)
-        {
-            for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
-            {
-                Quests::GiveAccolade(GameMode->AlivePlayers[i], Acc_Survival_Gold);
-            }
+            KillerPC->LastKillTimeWindow = CurrentTime + 10.f;
+            KillerPC->KillsInKillTimeWindow++;
         }
 
         Log("Got to the end");
+    }
+
+public:
+    void SetStuck(AActor* OtherActor, FHitResult& Hit) {
+        if (BotState < EBotState::Landed)
+            return;
+
+        if (BotState == EBotState::Stuck)
+            return;
+
+        if (OtherActor && OtherActor->IsA(ABuildingSMActor::StaticClass()))
+        {
+            ABuildingSMActor* Actor = (ABuildingSMActor*)OtherActor;
+            float Health = Actor->GetHealth();
+            FFindFloorResult Res;
+
+            if (Actor->bCanBeDamaged == 1 && Health > 1 && Health < 2500)
+            {
+                Pawn->CharacterMovement->K2_FindFloor(Pawn->CapsuleComponent->K2_GetComponentLocation(), &Res);
+                if (Res.HitResult.Actor.Get() == OtherActor)
+                    return;
+                StuckBuildingActor = Actor;
+            }
+        }
+
+        CachedBotState = BotState;
+        BotState = EBotState::Stuck;
     }
 
 public:
@@ -217,6 +265,139 @@ public:
         }
 
         return nullptr;
+    }
+
+    void Emote()
+    {
+        auto EmoteDef = Dances[UKismetMathLibrary::GetDefaultObj()->RandomIntegerInRange(0, Dances.size() - 1)];
+        if (!EmoteDef)
+            return;
+
+        static UClass* EmoteAbilityClass = StaticLoadObject<UClass>("/Game/Abilities/Emotes/GAB_Emote_Generic.GAB_Emote_Generic_C");
+
+        FGameplayAbilitySpec Spec{};
+        AbilitySpecConstructor(&Spec, reinterpret_cast<UGameplayAbility*>(EmoteAbilityClass->DefaultObject), 1, -1, EmoteDef);
+        GiveAbilityAndActivateOnce(reinterpret_cast<AFortPlayerStateAthena*>(PC->PlayerState)->AbilitySystemComponent, &Spec.Handle, Spec);
+    }
+
+    void ForceStrafe(bool override) {
+        if (!bIsCurrentlyStrafing && override)
+        {
+            if (UKismetMathLibrary::RandomBoolWithWeight(0.05))
+            {
+                bIsCurrentlyStrafing = true;
+                if (UKismetMathLibrary::RandomBool()) {
+                    StrafeType = EBotStrafeType::StrafeLeft;
+                }
+                else {
+                    StrafeType = EBotStrafeType::StrafeRight;
+                }
+                StrafeEndTime = Statics->GetTimeSeconds(UWorld::GetWorld()) + Math->RandomFloatInRange(2.0f, 5.0f);
+            }
+        }
+        else
+        {
+            if (Statics->GetTimeSeconds(UWorld::GetWorld()) < StrafeEndTime)
+            {
+                if (StrafeType == EBotStrafeType::StrafeLeft) {
+                    Pawn->AddMovementInput((Pawn->GetActorRightVector() * -1.0f), 1.5f, true);
+                }
+                else {
+                    Pawn->AddMovementInput(Pawn->GetActorRightVector(), 1.5f, true);
+                }
+            }
+            else
+            {
+                bIsCurrentlyStrafing = false;
+            }
+        }
+    }
+
+    void LookAt(AActor* Actor)
+    {
+        if (!Pawn || PC->GetFocusActor() == Actor)
+            return;
+
+        if (!Actor)
+        {
+            PC->K2_ClearFocus();
+            return;
+        }
+
+        PC->K2_SetFocus(Actor);
+    }
+
+    bool IsPickaxeEquiped() {
+        if (!Pawn || !Pawn->CurrentWeapon)
+            return false;
+
+        if (Pawn->CurrentWeapon->WeaponData->IsA(UFortWeaponMeleeItemDefinition::StaticClass()))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    bool HasGun()
+    {
+        for (size_t i = 0; i < PC->Inventory->Inventory.ReplicatedEntries.Num(); i++)
+        {
+            auto& Entry = PC->Inventory->Inventory.ReplicatedEntries[i];
+            if (Entry.ItemDefinition) {
+                std::string ItemName = Entry.ItemDefinition->Name.ToString();
+                if (ItemName.contains("Shotgun") || ItemName.contains("SMG") || ItemName.contains("Assault")
+                    || ItemName.contains("Grenade") || ItemName.contains("Sniper") || ItemName.contains("Rocket") || ItemName.contains("Pistol")) {
+                    return true;
+                    break;
+                }
+            }
+        }
+        return false;
+    }
+
+    void EquipPickaxe()
+    {
+        if (!Pawn || !Pawn->CurrentWeapon)
+            return;
+
+        if (!Pawn->CurrentWeapon->WeaponData->IsA(UFortWeaponMeleeItemDefinition::StaticClass()))
+        {
+            for (size_t i = 0; i < PC->Inventory->Inventory.ReplicatedEntries.Num(); i++)
+            {
+                if (PC->Inventory->Inventory.ReplicatedEntries[i].ItemDefinition->IsA(UFortWeaponMeleeItemDefinition::StaticClass()))
+                {
+                    Pawn->EquipWeaponDefinition((UFortWeaponItemDefinition*)PC->Inventory->Inventory.ReplicatedEntries[i].ItemDefinition, PC->Inventory->Inventory.ReplicatedEntries[i].ItemGuid);
+                    break;
+                }
+            }
+        }
+    }
+};
+
+class BotsBTService_AIEvaluator {
+public:
+    // When stressed the bot will handle combat situations with players or other bots differently
+    bool IsStressed(AFortPlayerPawnAthena* Pawn, ABP_PhoebePlayerController_C* PC) {
+        // If the bots health is 75 or below then they are stressed
+        if (Pawn->GetHealth() <= 75) {
+            return true;
+        }
+        return false;
+    }
+
+public:
+    void Tick(PlayerBot* bot) {
+        FVector BotPos = bot->Pawn->K2_GetActorLocation();
+
+        if (bot->Pawn->bIsCrouched && (bot->tick_counter % 30) == 0) {
+            bot->Pawn->UnCrouch(false);
+        }
+
+        bot->bIsStressed = IsStressed(bot->Pawn, bot->PC);
+
+        if (bot->bIsCurrentlyStrafing) {
+            bot->ForceStrafe(false);
+        }
     }
 };
 
@@ -415,6 +596,14 @@ namespace PlayerBots {
         bot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
         bot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
 
+        bot->PC->PathFollowingComponent->MyNavData = ((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData;
+        bot->PC->PathFollowingComponent->OnNavDataRegistered(((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData);
+
+        bot->PlayerState->OnRep_CharacterData();
+
+        bot->Pawn->CapsuleComponent->SetGenerateOverlapEvents(true);
+        bot->Pawn->CharacterMovement->bCanWalkOffLedges = true;
+
         bot->Pawn->SetMaxHealth(100);
         bot->Pawn->SetHealth(100);
         bot->Pawn->SetMaxShield(100);
@@ -449,8 +638,16 @@ namespace PlayerBots {
                 continue;
             }
 
+            if (bot->BotState > EBotState::Bus) {
+                BotsBTService_AIEvaluator Evaluator;
+                Evaluator.Tick(bot); // tick the evaluator after the bot is out of the bus so we dont mess up anything or cause potential crash
+            }
+
             if (bot->BotState == EBotState::Warmup) {
-                bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+                if (bot->tick_counter % 300 == 0) {
+                    bot->Emote();
+                }
+                //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
             }
             else if (bot->BotState == EBotState::PreBus) {
                 bot->Pawn->SetHealth(100);
@@ -481,6 +678,55 @@ namespace PlayerBots {
             }
             else if (bot->BotState == EBotState::Skydiving) {
 
+            }
+            else if (bot->BotState == EBotState::MovingToSafeZone) {
+                // when we have logic for the bots to look for players we can check the distance to the nearest player and if the distance is close enoug-
+                // - we can fight that player/bot
+                
+                if (GameState && GameState->SafeZoneIndicator)
+                {
+                    bot->PC->MoveToLocation(GameState->SafeZoneIndicator->NextCenter, 3000, true, false, false, true, nullptr, true);
+                }
+                else
+                {
+                    // Proceed normal action
+                }
+            }
+            else if (bot->BotState == EBotState::Stuck) {
+                if (!bot->IsPickaxeEquiped()) {
+                    bot->EquipPickaxe();
+                }
+                bot->Pawn->PawnStartFire(0);
+
+                if (!bot->Pawn->bIsCrouched && Math->RandomBoolWithWeight(0.025f)) {
+                    bot->Pawn->Crouch(false);
+                }
+
+                if (Math->RandomBoolWithWeight(0.05f)) {
+                    bot->Pawn->UnCrouch(false);
+                    bot->Pawn->Jump();
+                }
+
+                if (bot->StuckBuildingActor) {
+                    if (bot->StuckBuildingActor->GetHealth() <= 1) {
+                        bot->Pawn->PawnStopFire(0);
+                        bot->StuckBuildingActor = nullptr;
+                        bot->BotState = bot->CachedBotState;
+                    }
+                    else {
+                        if (!bot->IsPickaxeEquiped()) {
+                            bot->EquipPickaxe();
+                        }
+                        bot->LookAt(bot->StuckBuildingActor);
+                        bot->Pawn->PawnStartFire(0);
+                    }
+                }
+                else {
+                    bot->ForceStrafe(true);
+                    bot->BotState = bot->CachedBotState;
+                }
+
+                bot->Pawn->PawnStopFire(0);
             }
 
             bot->tick_counter++;

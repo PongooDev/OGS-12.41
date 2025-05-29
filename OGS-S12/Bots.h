@@ -148,7 +148,19 @@ namespace Bots {
 			}
 		}
 		if (KilledBot && InstigatedBy && InstigatedBy->PlayerState && !InstigatedBy->PlayerState->bIsABot) {
-			Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_075_ElimMang.AccoladeId_075_ElimMang"));
+			Log(KilledBot->Name);
+			if (KilledBot->Name.contains("POI")) {
+				Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_078_ElimBoss.AccoladeId_078_ElimBoss"));
+			}
+			else if (KilledBot->Name.contains("Ego")) {
+				Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_081_ElimGhost.AccoladeId_081_ElimGhost"));
+			}
+			else if (KilledBot->Name.contains("Alter")) {
+				Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_082_ElimShadow.AccoladeId_082_ElimShadow"));
+			}
+			else {
+				Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_075_ElimMang.AccoladeId_075_ElimMang"));
+			}
 		}
 
 		if (InstigatedBy && DamageCauser) {
@@ -249,6 +261,15 @@ namespace Bots {
 
 				bot->Pawn->PawnStartFire(0);
 				bot->Pawn->PawnStopFire(0);
+				break;
+			}
+		}
+
+		for (auto& bot : PlayerBotArray)
+		{
+			if (bot->PC == Comp->BotController)
+			{
+				bot->SetStuck(OtherActor, Hit);
 				break;
 			}
 		}
