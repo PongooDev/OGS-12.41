@@ -283,17 +283,14 @@ public:
     void ForceStrafe(bool override) {
         if (!bIsCurrentlyStrafing && override)
         {
-            if (UKismetMathLibrary::RandomBoolWithWeight(0.05))
-            {
-                bIsCurrentlyStrafing = true;
-                if (UKismetMathLibrary::RandomBool()) {
-                    StrafeType = EBotStrafeType::StrafeLeft;
-                }
-                else {
-                    StrafeType = EBotStrafeType::StrafeRight;
-                }
-                StrafeEndTime = Statics->GetTimeSeconds(UWorld::GetWorld()) + Math->RandomFloatInRange(2.0f, 5.0f);
+            bIsCurrentlyStrafing = true;
+            if (UKismetMathLibrary::RandomBool()) {
+                StrafeType = EBotStrafeType::StrafeLeft;
             }
+            else {
+                StrafeType = EBotStrafeType::StrafeRight;
+            }
+            StrafeEndTime = Statics->GetTimeSeconds(UWorld::GetWorld()) + Math->RandomFloatInRange(2.0f, 5.0f);
         }
         else
         {
