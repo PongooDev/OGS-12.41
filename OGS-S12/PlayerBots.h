@@ -31,6 +31,12 @@ enum class EBotStrafeType {
     StrafeRight
 };
 
+enum class ELootableType {
+    None = -1,
+    Chest = 0,
+    Pickup = 1
+};
+
 std::vector<class PlayerBot*> PlayerBotArray{};
 struct PlayerBot
 {
@@ -56,6 +62,12 @@ public:
     // The building that the bot collided with (doesent even works smd)
     ABuildingActor* StuckBuildingActor = nullptr;
 
+    // Reservation of lootables, stops pileup and tracks current lootable
+    AActor* TargetLootable = nullptr;
+
+    // Just incase we have to do specific stuff based on the type of lootable it is
+    ELootableType TargetLootableType = ELootableType::None;
+
     // The displayname of the bot
     FString DisplayName = L"Bot";
 
@@ -76,6 +88,9 @@ public:
 
     // When should the current strafe end?
     float StrafeEndTime = 0.0f;
+
+    // General purpose timer
+    float TimeToNextAction = 0.f;
 
 public:
     void OnDied(AFortPlayerStateAthena* KillerState, AActor* DamageCauser, FName BoneName)
@@ -247,6 +262,10 @@ public:
     // Give an item to the bot
     void GiveItemBot(UFortItemDefinition* Def, int Count = 1, int LoadedAmmo = 0)
     {
+        if (!Def) {
+            return;
+        }
+
         UFortWorldItem* Item = (UFortWorldItem*)Def->CreateTemporaryItemInstanceBP(Count, 0);
         Item->OwnerInventory = PC->Inventory;
         Item->ItemEntry.LoadedAmmo = LoadedAmmo;
@@ -369,6 +388,295 @@ public:
             }
         }
     }
+
+    void SimpleSwitchToWeapon() {
+        if (!HasGun()) {
+            return;
+        }
+
+        if (!Pawn || !Pawn->CurrentWeapon || !Pawn->CurrentWeapon->WeaponData || !PC || !PC->Inventory || bIsDead)
+            return;
+
+        if (!Pawn->CurrentWeapon->WeaponData->IsA(UFortWeaponMeleeItemDefinition::StaticClass())) {
+            return;
+        }
+
+        if (Pawn->CurrentWeapon->WeaponData->IsA(UFortWeaponMeleeItemDefinition::StaticClass()))
+        {
+            for (size_t i = 0; i < PC->Inventory->Inventory.ReplicatedEntries.Num(); i++)
+            {
+                auto& Entry = PC->Inventory->Inventory.ReplicatedEntries[i];
+                if (Entry.ItemDefinition) {
+                    std::string ItemName = Entry.ItemDefinition->Name.ToString();
+                    if (ItemName.contains("Shotgun") || ItemName.contains("SMG") || ItemName.contains("Assault")
+                        || ItemName.contains("Grenade") || ItemName.contains("Sniper") || ItemName.contains("Rocket") || ItemName.contains("Pistol")) {
+                        Pawn->EquipWeaponDefinition((UFortWeaponItemDefinition*)Entry.ItemDefinition, Entry.ItemGuid);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    void Pickup(AFortPickup* Pickup) {
+        GiveItemBot(Pickup->PrimaryPickupItemEntry.ItemDefinition, Pickup->PrimaryPickupItemEntry.Count, Pickup->PrimaryPickupItemEntry.LoadedAmmo);
+        if (((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP() && ((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP() != Pickup->PrimaryPickupItemEntry.ItemDefinition)
+        {
+            GiveItemBot(((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP(), 30);
+        }
+
+        Pickup->PickupLocationData.bPlayPickupSound = true;
+        Pickup->PickupLocationData.FlyTime = 0.3f;
+        Pickup->PickupLocationData.ItemOwner = Pawn;
+        Pickup->PickupLocationData.PickupGuid = Pickup->PrimaryPickupItemEntry.ItemGuid;
+        Pickup->PickupLocationData.PickupTarget = Pawn;
+        Pickup->OnRep_PickupLocationData();
+
+        Pickup->bPickedUp = true;
+        Pickup->OnRep_bPickedUp();
+    }
+
+    void PickupAllItemsInRange(float Range = 320.f) {
+        static auto PickupClass = AFortPickupAthena::StaticClass();
+        TArray<AActor*> Array;
+        UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), PickupClass, &Array);
+
+        for (size_t i = 0; i < Array.Num(); i++)
+        {
+            if (Array[i]->GetDistanceTo(Pawn) < Range)
+            {
+                Pickup((AFortPickupAthena*)Array[i]);
+            }
+        }
+
+        Array.Free();
+    }
+
+    ABuildingActor* FindNearestChest()
+    {
+        static auto ChestClass = StaticLoadObject<UClass>("/Game/Building/ActorBlueprints/Containers/Tiered_Chest_Athena.Tiered_Chest_Athena_C");
+        static auto FactionChestClass = StaticLoadObject<UClass>("/Game/Building/ActorBlueprints/Containers/Tiered_Chest_Athena_FactionChest.Tiered_Chest_Athena_FactionChest_C");
+        TArray<AActor*> Array;
+        TArray<AActor*> FactionChests;
+        UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), ChestClass, &Array);
+        UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), FactionChestClass, &FactionChests);
+
+        AActor* NearestChest = nullptr;
+
+        for (size_t i = 0; i < Array.Num(); i++)
+        {
+            AActor* Chest = Array[i];
+            if (Chest->bHidden && Chest != TargetLootable)
+                continue;
+
+            if (!NearestChest || Chest->GetDistanceTo(Pawn) < NearestChest->GetDistanceTo(Pawn))
+            {
+                NearestChest = Array[i];
+            }
+        }
+
+        for (size_t i = 0; i < FactionChests.Num(); i++)
+        {
+            AActor* Chest = FactionChests[i];
+            if (Chest->bHidden && Chest != TargetLootable)
+                continue;
+
+            if (!NearestChest || Chest->GetDistanceTo(Pawn) < NearestChest->GetDistanceTo(Pawn))
+            {
+                NearestChest = FactionChests[i];
+            }
+        }
+        Array.Free();
+        FactionChests.Free();
+        return (ABuildingActor*)NearestChest;
+    }
+
+    AFortPickupAthena* FindNearestPickup()
+    {
+        static auto PickupClass = AFortPickupAthena::StaticClass();
+        TArray<AActor*> Array;
+        UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), PickupClass, &Array);
+        AActor* NearestPickup = nullptr;
+
+        for (size_t i = 0; i < Array.Num(); i++)
+        {
+            if (Array[i]->bHidden && Array[i] != TargetLootable)
+                continue;
+
+            if (!NearestPickup || Array[i]->GetDistanceTo(Pawn) < NearestPickup->GetDistanceTo(Pawn))
+            {
+                NearestPickup = Array[i];
+            }
+        }
+
+        Array.Free();
+        return (AFortPickupAthena*)NearestPickup;
+    }
+
+    bool GetNearestLootable() {
+        static auto ChestClass = StaticLoadObject<UClass>("/Game/Building/ActorBlueprints/Containers/Tiered_Chest_Athena.Tiered_Chest_Athena_C");
+        static auto FactionChestClass = StaticLoadObject<UClass>("/Game/Building/ActorBlueprints/Containers/Tiered_Chest_Athena_FactionChest.Tiered_Chest_Athena_FactionChest_C");
+        TArray<AActor*> ChestArray;
+        TArray<AActor*> FactionChests;
+        UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), ChestClass, &ChestArray);
+        UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), FactionChestClass, &FactionChests);
+
+        static auto PickupClass = AFortPickupAthena::StaticClass();
+        TArray<AActor*> PickupArray;
+        UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), PickupClass, &PickupArray);
+
+        AActor* NearestPickup = nullptr;
+        AActor* NearestChest = nullptr;
+
+        for (size_t i = 0; i < ChestArray.Num(); i++)
+        {
+            AActor* Chest = ChestArray[i];
+            if (Chest->bHidden && Chest != TargetLootable)
+                continue;
+
+            if (!NearestChest || Chest->GetDistanceTo(Pawn) < NearestChest->GetDistanceTo(Pawn))
+            {
+                NearestChest = ChestArray[i];
+            }
+        }
+
+        for (size_t i = 0; i < FactionChests.Num(); i++)
+        {
+            AActor* Chest = FactionChests[i];
+            if (Chest->bHidden && Chest != TargetLootable)
+                continue;
+
+            if (!NearestChest || Chest->GetDistanceTo(Pawn) < NearestChest->GetDistanceTo(Pawn))
+            {
+                NearestChest = FactionChests[i];
+            }
+        }
+
+        for (size_t i = 0; i < PickupArray.Num(); i++)
+        {
+            if (PickupArray[i]->bHidden && PickupArray[i] != TargetLootable)
+                continue;
+
+            if (!NearestPickup || PickupArray[i]->GetDistanceTo(Pawn) < NearestPickup->GetDistanceTo(Pawn))
+            {
+                NearestPickup = PickupArray[i];
+            }
+        }
+
+        ChestArray.Free();
+        FactionChests.Free();
+        PickupArray.Free();
+        return NearestPickup->GetDistanceTo(Pawn) > NearestChest->GetDistanceTo(Pawn);
+    }
+
+    ABuildingSMActor* FindNearestBuildingSMActor()
+    {
+        static TArray<AActor*> Array;
+        static bool PopulatedArray = false;
+        if (!PopulatedArray)
+        {
+            PopulatedArray = true;
+            UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), ABuildingSMActor::StaticClass(), &Array);
+        }
+
+        AActor* NearestActor = nullptr;
+
+        for (size_t i = 0; i < Array.Num(); i++)
+        {
+            if (!NearestActor || (((ABuildingSMActor*)NearestActor)->GetHealth() < 1500 && ((ABuildingSMActor*)NearestActor)->GetHealth() > 1 && Array[i]->GetDistanceTo(Pawn) < NearestActor->GetDistanceTo(Pawn)))
+            {
+                NearestActor = Array[i];
+            }
+        }
+
+        return (ABuildingSMActor*)NearestActor;
+    }
+
+    FVector FindNearestPlayerOrBot() {
+        auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+
+        AActor* NearestPlayer = nullptr;
+
+        for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+        {
+            if (!NearestPlayer || (GameMode->AlivePlayers[i]->Pawn && GameMode->AlivePlayers[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
+            {
+                NearestPlayer = GameMode->AlivePlayers[i]->Pawn;
+            }
+        }
+
+        for (size_t i = 0; i < GameMode->AliveBots.Num(); i++)
+        {
+            if (GameMode->AliveBots[i]->Pawn != Pawn)
+            {
+                if (!NearestPlayer || (GameMode->AliveBots[i]->Pawn && GameMode->AliveBots[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
+                {
+                    NearestPlayer = GameMode->AliveBots[i]->Pawn;
+                }
+            }
+        }
+
+        for (size_t i = 0; i < FactionBots.size(); i++) {
+            if (!NearestPlayer || (FactionBots[i]->Pawn && FactionBots[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
+            {
+                NearestPlayer = FactionBots[i]->Pawn;
+            }
+        }
+
+        return NearestPlayer->K2_GetActorLocation();
+    }
+
+    AActor* GetNearestPlayerActor() {
+        auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+
+        AActor* NearestPlayer = nullptr;
+
+        for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+        {
+            if (!NearestPlayer || (GameMode->AlivePlayers[i]->Pawn && GameMode->AlivePlayers[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
+            {
+                NearestPlayer = GameMode->AlivePlayers[i]->Pawn;
+            }
+        }
+
+        for (size_t i = 0; i < GameMode->AliveBots.Num(); i++)
+        {
+            if (GameMode->AliveBots[i]->Pawn != Pawn)
+            {
+                if (!NearestPlayer || (GameMode->AliveBots[i]->Pawn && GameMode->AliveBots[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
+                {
+                    NearestPlayer = GameMode->AliveBots[i]->Pawn;
+                }
+            }
+        }
+
+        for (size_t i = 0; i < FactionBots.size(); i++) {
+            if (!NearestPlayer || (FactionBots[i]->Pawn && FactionBots[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
+            {
+                NearestPlayer = FactionBots[i]->Pawn;
+            }
+        }
+
+        return NearestPlayer;
+    }
+
+    void UpdateLootableReservation(AActor* Lootable, bool RemoveReservation) {
+        if (RemoveReservation && !TargetLootable) {
+            return;
+        }
+
+        if (!RemoveReservation) {
+            if (!Lootable) {
+                return;
+            }
+            TargetLootable = Lootable;
+            Lootable->bHidden = true;
+        }
+        else {
+            TargetLootable->bHidden = false;
+            TargetLootable = nullptr;
+        }
+    }
 };
 
 class BotsBTService_AIEvaluator {
@@ -385,6 +693,36 @@ public:
 public:
     void Tick(PlayerBot* bot) {
         FVector BotPos = bot->Pawn->K2_GetActorLocation();
+
+        if (bot->tick_counter % 60 == 0) {
+            // Lets update the reservation every 2 seconds because its cleaner
+            AActor* NearestChest = bot->FindNearestChest();
+            AActor* NearestPickup = (AActor*)bot->FindNearestPickup();
+            if (!NearestChest || !NearestPickup) {}
+            else {
+                AActor* Nearest = NearestChest;
+                ELootableType NearestLootable = ELootableType::Chest;
+                if (NearestChest->GetDistanceTo(bot->Pawn) > NearestPickup->GetDistanceTo(bot->Pawn)) {
+                    NearestLootable = ELootableType::Pickup;
+                    Nearest = NearestPickup;
+                }
+                if (bot->TargetLootable) {
+                    if (Nearest != bot->TargetLootable) {
+                        bot->UpdateLootableReservation(nullptr, true);
+                        bot->UpdateLootableReservation(Nearest, false);
+                    }
+                }
+                else {
+                    bot->UpdateLootableReservation(Nearest, false);
+                }
+                bot->TargetLootableType = NearestLootable;
+            }
+        }
+
+        if (bot->tick_counter % 60 == 0) {
+            // Every 2 seconds clear the focus just incase the bot is doing something else
+            bot->PC->K2_ClearFocus();
+        }
 
         if (bot->Pawn->bIsCrouched && (bot->tick_counter % 30) == 0) {
             bot->Pawn->UnCrouch(false);
@@ -663,7 +1001,7 @@ namespace PlayerBots {
                     bot->PC->ThankBusDriver();
                 }
 
-                if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.002f)) {
+                if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.001f)) {
                     if (!bot->bHasThankedBusDriver && UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.5f)) {
                         bot->bHasThankedBusDriver = true;
                         bot->PC->ThankBusDriver();
@@ -674,19 +1012,247 @@ namespace PlayerBots {
                 }
             }
             else if (bot->BotState == EBotState::Skydiving) {
+                if (!bot->Pawn->bIsSkydiving) {
+                    bot->BotState = EBotState::Gliding;
+                }
+                else {
+                    auto BotPos = bot->Pawn->K2_GetActorLocation();
+                    if (bot->TargetLootable) {
+                        auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
 
+                        bot->PC->SetControlRotation(TestRot);
+                        bot->PC->K2_SetActorRotation(TestRot, true);
+                        bot->LookAt(bot->TargetLootable);
+
+                        bot->PC->MoveToActor(bot->TargetLootable, 0.f, true, false, true, nullptr, true);
+
+                        // Dont know a better way to skydive
+                        bot->Pawn->AddMovementInput(UKismetMathLibrary::GetDefaultObj()->NegateVector(bot->Pawn->GetActorUpVector()), 1, true);
+                        //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.2f, true);
+                    }
+                }
+            }
+            else if (bot->BotState == EBotState::Gliding) {
+                FVector Vel = bot->Pawn->GetVelocity();
+                float Speed = Vel.Z;
+                if (Speed == 0.f) {
+                    bot->BotState = EBotState::Landed;
+                }
+
+                if (bot->TargetLootable) {
+                    auto BotPos = bot->Pawn->K2_GetActorLocation();
+                    auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
+
+                    bot->PC->SetControlRotation(TestRot);
+                    bot->PC->K2_SetActorRotation(TestRot, true);
+                    bot->LookAt(bot->TargetLootable);
+
+                    bot->PC->MoveToActor(bot->TargetLootable, 0.f, true, false, true, nullptr, true);
+                    //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.2f, true);
+                }
+            }
+            else if (bot->BotState == EBotState::Landed) {
+                FVector BotLoc = bot->Pawn->K2_GetActorLocation();
+                FVector Nearest = bot->FindNearestPlayerOrBot();
+                if (!Nearest.IsZero()) {
+                    float Dist = Math->Vector_Distance(BotLoc, Nearest);
+                    if (Dist < 6000.f) {
+                        // When the bot lands the bot will have no guns so we need to get away before dying
+                        //bot->BotState = EBotState::Fleeing; // Fleeing is kinda cooked atm
+
+                        bot->BotState = EBotState::Looting;
+                    }
+                    else {
+                        bot->BotState = EBotState::Looting;
+                    }
+                }
+                else {
+                    bot->BotState = EBotState::Looting;
+                }
+            }
+            else if (bot->BotState == EBotState::Fleeing) {
+                FVector BotLoc = bot->Pawn->K2_GetActorLocation();
+                FVector Nearest = bot->FindNearestPlayerOrBot();
+                if (!Nearest.IsZero()) {
+                    float Dist = Math->Vector_Distance(BotLoc, Nearest);
+                    if (bot->HasGun()) {
+                        bot->BotState = EBotState::LookingForPlayers;
+                        continue;
+                    }
+
+                    if (Dist < 5000.f) {
+                        auto TestRot = Math->FindLookAtRotation(Nearest, BotLoc);
+
+                        bot->PC->SetControlRotation(TestRot);
+                        bot->PC->K2_SetActorRotation(TestRot, true);
+                        bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.2f, true);
+                    }
+                    else {
+                        bot->BotState = EBotState::Looting;
+                    }
+                }
+                else {
+                    bot->BotState = EBotState::Looting;
+                }
+            }
+            else if (bot->BotState == EBotState::Looting) {
+                if (bot->TargetLootable) {
+                    FVector BotLoc = bot->Pawn->K2_GetActorLocation();
+                    if (!BotLoc.IsZero()) {
+                        FVector Nearest = bot->FindNearestPlayerOrBot();
+                        if (!Nearest.IsZero()) {
+                            float Dist = Math->Vector_Distance(BotLoc, bot->TargetLootable->K2_GetActorLocation());
+
+                            if (bot->HasGun()) {
+                                bot->BotState = EBotState::LookingForPlayers;
+                                continue;
+                            }
+                        }
+                    }
+                    float Dist = Math->Vector_Distance(BotLoc, bot->TargetLootable->K2_GetActorLocation());
+
+                    if (Dist < 300.f) {
+                        bot->Pawn->PawnStopFire(0);
+                        bot->PC->StopMovement();
+                        if (!bot->TimeToNextAction || !bot->Pawn->bStartedInteractSearch && bot->TargetLootableType == ELootableType::Chest) {
+                            bot->TimeToNextAction = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
+                            bot->Pawn->bStartedInteractSearch = true;
+                            bot->Pawn->OnRep_StartedInteractSearch();
+                        }
+                        else if (UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld()) - bot->TimeToNextAction >= 1.5f && bot->TargetLootableType == ELootableType::Chest) {
+                            Looting::SpawnLoot((ABuildingContainer*)bot->TargetLootable);
+                            bot->TargetLootable->bHidden = true;
+                            bot->TargetLootable = nullptr;
+                            AFortPickup* Pickup = bot->FindNearestPickup();
+                            if (Pickup)
+                            {
+                                bot->PickupAllItemsInRange();
+                                bot->SimpleSwitchToWeapon();
+                            }
+
+                            bot->Pawn->bStartedInteractSearch = false;
+                            bot->Pawn->OnRep_StartedInteractSearch();
+                            bot->TimeToNextAction = 0;
+                            bot->BotState = EBotState::LookingForPlayers;
+                        }
+                        else if (bot->TargetLootableType == ELootableType::Pickup) {
+                            bot->PickupAllItemsInRange(400.f);
+                            bot->TimeToNextAction = 0;
+                            bot->BotState = EBotState::LookingForPlayers;
+                        }
+                    }
+                    else if (Dist < 2000.f) {
+                        bot->Pawn->PawnStartFire(0);
+
+                        auto BotPos = bot->Pawn->K2_GetActorLocation();
+                        auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
+
+                        bot->PC->SetControlRotation(TestRot);
+                        bot->PC->K2_SetActorRotation(TestRot, true);
+                        bot->LookAt(bot->TargetLootable);
+                        bot->PC->MoveToActor(bot->TargetLootable, 0, true, false, true, nullptr, true);
+                        //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+                    }
+                    else {
+                        auto BotPos = bot->Pawn->K2_GetActorLocation();
+                        auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
+
+                        bot->PC->SetControlRotation(TestRot);
+                        bot->PC->K2_SetActorRotation(TestRot, true);
+                        bot->LookAt(bot->TargetLootable);
+                        bot->PC->MoveToActor(bot->TargetLootable, 0, true, false, true, nullptr, true);
+                        //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+                    }
+                }
+            }
+            else if (bot->BotState == EBotState::LookingForPlayers) {
+                if (!bot->HasGun()) {
+                    bot->BotState = EBotState::Looting;
+                }
+                else {
+                    if (bot->IsPickaxeEquiped()) {
+                        bot->SimpleSwitchToWeapon();
+                    }
+                }
+                FVector BotLoc = bot->Pawn->K2_GetActorLocation();
+                AActor* NearestPlayerActor = bot->GetNearestPlayerActor();
+                FVector Nearest = NearestPlayerActor->K2_GetActorLocation();
+
+                FRotator TestRot;
+                FVector TargetPosmod = Nearest;
+
+                if (!Nearest.IsZero()) {
+                    float Dist = Math->Vector_Distance(BotLoc, Nearest);
+
+                    if (Dist < 4000 && bot->PC->LineOfSightTo(NearestPlayerActor, {}, true)) {
+                        if (true) {
+                            float RandomXmod = Math->RandomFloatInRange(-180, 180);
+                            float RandomYmod = Math->RandomFloatInRange(-180, 180);
+                            float RandomZmod = Math->RandomFloatInRange(-180, 180);
+
+                            FVector TargetPosMod{ Nearest.X + RandomXmod, Nearest.Y + RandomYmod, Nearest.Z + RandomZmod };
+
+                            FRotator Rot = Math->FindLookAtRotation(BotLoc, TargetPosMod);
+
+                            bot->PC->SetControlRotation(Rot);
+                            bot->PC->K2_SetActorRotation(Rot, true);
+
+                            //bot->PC->K2_SetFocalPoint(TargetPosMod); doesent fix the issue with them not aiming up or down
+                        }
+
+                        if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.025)) {
+                            TestRot = Math->FindLookAtRotation(BotLoc, Nearest);
+
+                            bot->PC->SetControlRotation(TestRot);
+                            bot->PC->K2_SetActorRotation(TestRot, true);
+                        }
+
+                        if (!bot->Pawn->bIsCrouched && Math->RandomBoolWithWeight(0.025f)) {
+                            bot->Pawn->Crouch(false);
+                        }
+
+                        bot->ForceStrafe(true);
+
+                        if (Dist < 1000) {
+                            FVector BackVector = bot->Pawn->GetActorForwardVector() * -1.0f;
+                            bot->Pawn->AddMovementInput(BackVector, 1.1f, true);
+                        }
+
+                        bot->PC->MoveToActor(NearestPlayerActor, rand() % 750 + 750, true, false, true, nullptr, true);
+
+                        //bot->PC->StopMovement();
+                        if (bot->PC->LineOfSightTo(NearestPlayerActor, BotLoc, true)) {
+                            bot->Pawn->PawnStartFire(0);
+                        }
+                        else {
+                            bot->Pawn->PawnStopFire(0);
+                        }
+                    }
+                    else {
+                        bot->BotState = EBotState::MovingToSafeZone;
+                    }
+                }
+                else {}
             }
             else if (bot->BotState == EBotState::MovingToSafeZone) {
-                // when we have logic for the bots to look for players we can check the distance to the nearest player and if the distance is close enoug-
-                // - we can fight that player/bot
+                FVector BotLoc = bot->Pawn->K2_GetActorLocation();
+                FVector Nearest = bot->FindNearestPlayerOrBot();
+                if (!Nearest.IsZero()) {
+                    float Dist = Math->Vector_Distance(BotLoc, Nearest);
+
+                    if (Dist < 4000.f) {
+                        if (!bot->HasGun()) {
+                            bot->BotState = EBotState::Fleeing;
+                        }
+                        else {
+                            bot->BotState = EBotState::LookingForPlayers;
+                        }
+                    }
+                }
                 
                 if (GameState && GameState->SafeZoneIndicator)
                 {
-                    bot->PC->MoveToLocation(GameState->SafeZoneIndicator->NextCenter, 3000, true, false, false, true, nullptr, true);
-                }
-                else
-                {
-                    // Proceed normal action
+                    bot->PC->MoveToLocation(GameState->SafeZoneIndicator->NextCenter, GameState->SafeZoneIndicator->Radius, true, false, false, true, nullptr, true);
                 }
             }
             else if (bot->BotState == EBotState::Stuck) {

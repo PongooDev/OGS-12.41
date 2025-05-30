@@ -440,6 +440,10 @@ namespace GameMode {
 		if (Globals::bBotsEnabled) {
 			for (size_t i = 0; i < PlayerBotArray.size(); i++)
 			{
+				// Lets actually make sure the bot landed first before moving to zone
+				if (PlayerBotArray[i]->BotState < EBotState::Landed) {
+					continue;
+				}
 				PlayerBotArray[i]->BotState = EBotState::MovingToSafeZone; // i dont know the best way to get the bots to move to zone tbh
 			}
 		}

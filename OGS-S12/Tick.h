@@ -139,7 +139,7 @@ namespace Tick {
 				&& GameMode->AliveBots.Num() < Globals::MaxBotsToSpawn
 				&& GameState->WarmupCountdownEndTime > UGameplayStatics::GetTimeSeconds(UWorld::GetWorld()))
 			{
-				if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.036f))
+				if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.04f))
 				{
 					AActor* SpawnLocator = PlayerStarts[UKismetMathLibrary::GetDefaultObj()->RandomIntegerInRange(0, PlayerStarts.Num() - 1)];
 
