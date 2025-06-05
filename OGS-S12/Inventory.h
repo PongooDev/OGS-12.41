@@ -2,6 +2,17 @@
 #include "framework.h"
 
 namespace Inventory {
+	UFortItemDefinition* FindDefFromGuid(AFortPlayerControllerAthena* PC, FGuid Guid) {
+		for (int32 i = 0; i < PC->WorldInventory->Inventory.ReplicatedEntries.Num(); i++)
+		{
+			if (PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemGuid == Guid) {
+				return (UFortItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition;
+			}
+		}
+
+		return nullptr;
+	}
+
 	EFortQuickBars GetQuickBars(UFortItemDefinition* ItemDefinition)
 	{
 		if (!ItemDefinition->IsA(UFortWeaponMeleeItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortEditToolItemDefinition::StaticClass()) &&
@@ -345,29 +356,25 @@ namespace Inventory {
 		if (!PC->MyFortPawn || !PC->Pawn)
 			return;
 
-		for (int32 i = 0; i < PC->WorldInventory->Inventory.ReplicatedEntries.Num(); i++)
-		{
-			if (PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemGuid == Guid)
+		UFortItemDefinition* ItemDef = FindDefFromGuid(PC, Guid);
+		if (ItemDef) {
+			UFortWeaponItemDefinition* DefToEquip = (UFortWeaponItemDefinition*)ItemDef;
+			if (ItemDef->IsA(UFortGadgetItemDefinition::StaticClass()))
 			{
-				UFortWeaponItemDefinition* DefToEquip = (UFortWeaponItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition;
-				if (PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition->IsA(UFortGadgetItemDefinition::StaticClass()))
-				{
-					DefToEquip = ((UFortGadgetItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition)->GetWeaponItemDefinition();
-				}
-				else if (PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition->IsA(UFortDecoItemDefinition::StaticClass())) {
-					auto DecoItemDefinition = (UFortDecoItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition;
-					PC->MyFortPawn->PickUpActor(nullptr, DecoItemDefinition);
-					PC->MyFortPawn->CurrentWeapon->ItemEntryGuid = Guid;
-					static auto FortDecoTool_ContextTrapStaticClass = StaticLoadObject<UClass>("/Script/FortniteGame.FortDecoTool_ContextTrap");
-					if (PC->MyFortPawn->CurrentWeapon->IsA(FortDecoTool_ContextTrapStaticClass))
-					{
-						reinterpret_cast<AFortDecoTool_ContextTrap*>(PC->MyFortPawn->CurrentWeapon)->ContextTrapItemDefinition = (UFortContextTrapItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition;
-					}
-					return;
-				}
-				PC->MyFortPawn->EquipWeaponDefinition(DefToEquip, Guid);
-				break;
+				DefToEquip = ((UFortGadgetItemDefinition*)ItemDef)->GetWeaponItemDefinition();
 			}
+			else if (ItemDef->IsA(UFortDecoItemDefinition::StaticClass())) {
+				auto DecoItemDefinition = (UFortDecoItemDefinition*)ItemDef;
+				PC->MyFortPawn->PickUpActor(nullptr, DecoItemDefinition);
+				PC->MyFortPawn->CurrentWeapon->ItemEntryGuid = Guid;
+				static auto FortDecoTool_ContextTrapStaticClass = StaticLoadObject<UClass>("/Script/FortniteGame.FortDecoTool_ContextTrap");
+				if (PC->MyFortPawn->CurrentWeapon->IsA(FortDecoTool_ContextTrapStaticClass))
+				{
+					reinterpret_cast<AFortDecoTool_ContextTrap*>(PC->MyFortPawn->CurrentWeapon)->ContextTrapItemDefinition = (UFortContextTrapItemDefinition*)ItemDef;
+				}
+				return;
+			}
+			PC->MyFortPawn->EquipWeaponDefinition(DefToEquip, Guid);
 		}
 	}
 
