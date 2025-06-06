@@ -405,6 +405,13 @@ namespace GameMode {
 			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
 			FactionBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusFlying);
 			FactionBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+
+			if (FactionBot->PC->BrainComponent) {
+				Log("Braincomp");
+			}
+			else {
+				Log("Noooo");
+			}
 		}
 
 		for (auto PlayerBot : PlayerBotArray)

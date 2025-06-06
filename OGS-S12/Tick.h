@@ -139,7 +139,7 @@ namespace Tick {
 				&& GameMode->AliveBots.Num() < Globals::MaxBotsToSpawn
 				&& GameState->WarmupCountdownEndTime > UGameplayStatics::GetTimeSeconds(UWorld::GetWorld()))
 			{
-				if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.045f))
+				if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.05f))
 				{
 					AActor* SpawnLocator = PlayerStarts[UKismetMathLibrary::GetDefaultObj()->RandomIntegerInRange(0, PlayerStarts.Num() - 1)];
 
@@ -160,10 +160,10 @@ namespace Tick {
 			AccoladeTickingService::Tick(GameMode, GameState);
 		}
 
-		if (Globals::bBossesEnabled && !Globals::bEventEnabled && GameState->GamePhase > EAthenaGamePhase::Warmup)
+		/*if (Globals::bBossesEnabled && !Globals::bEventEnabled && GameState->GamePhase > EAthenaGamePhase::Warmup)
 		{
 			Bosses::TickBots();
-		}
+		}*/
 
 		if (Globals::bBotsEnabled && !Globals::bEventEnabled) {
 			PlayerBots::Tick();

@@ -18,6 +18,7 @@
 #include <tlhelp32.h>
 #include <future>
 #include <set>
+#include <variant>
 
 #include "minhook/MinHook.h"
 #include "SDK/SDK.hpp"

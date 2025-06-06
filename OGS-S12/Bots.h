@@ -36,7 +36,7 @@ namespace Bots {
 		AFortAthenaAIBotController* PC = (AFortAthenaAIBotController*)Ret->Controller;
 
 		static UBehaviorTree* BehaviorTree = StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2");
-		static UBlackboardComponent* Blackboard = StaticLoadObject<UBlackboardComponent>("/Game/Athena/AI/MANG/BehaviorTree/BB_MANG2.BB_MANG2");
+		static UBlackboardData* Blackboard = StaticLoadObject<UBlackboardData>("/Game/Athena/AI/MANG/BehaviorTree/BB_MANG2.BB_MANG2");
 		if (!BehaviorTree) 
 		{
 			Log("Behaviourtree does not exist!");
@@ -45,14 +45,6 @@ namespace Bots {
 		{
 			Log("Blackboard doesent exist!");
 		}
-		PC->BehaviorTree = BehaviorTree;
-		PC->RunBehaviorTree(BehaviorTree);
-		PC->UseBlackboard(BehaviorTree->BlackboardAsset, &Blackboard);
-
-		static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
-		static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
-		PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
-		PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
 
 		PC->CosmeticLoadoutBC = BotData->CharacterCustomization->CustomizationLoadout;
 		PC->CachedPatrollingComponent = (UFortAthenaNpcPatrollingComponent*)UGameplayStatics::SpawnObject(UFortAthenaNpcPatrollingComponent::StaticClass(), PC);
@@ -114,6 +106,27 @@ namespace Bots {
 				bot->PatrolPath = PatrolPaths[i];
 			}
 		}
+
+		if (!bot->PC->BrainComponent) {
+			Log("tg");
+		}
+		else {
+			Log("gjhge");
+		}
+		bot->PC->UseBlackboard(Blackboard, &bot->PC->Blackboard);
+		bot->PC->BehaviorTree = BehaviorTree;
+		bot->PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
+		if (bot->PC->RunBehaviorTree(BehaviorTree)) {
+			Log("Nice!");
+		}
+		else {
+			Log("damn...");
+		}
+
+		static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+		static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+		bot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
+		bot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
 
 		return Ret;
 	}
@@ -277,6 +290,16 @@ namespace Bots {
 		return OnActorBumpOG(Comp, SelfActor, OtherActor, NormalImpulse, Hit);
 	}
 
+	// Pathfinding
+	inline void (*InitializeForWorldOG)(UNavigationSystemV1* NavSystem, UWorld* World, EFNavigationSystemRunMode Mode);
+	void InitializeForWorld(UNavigationSystemV1* NavSystem, UWorld* World, EFNavigationSystemRunMode Mode)
+	{
+		Log("InitializeForWorld Called!");
+		auto AthenaNavSystem = (UAthenaNavSystem*)NavSystem;
+		AthenaNavSystem->bAutoCreateNavigationData = true;
+		return InitializeForWorldOG(NavSystem, World, Mode);
+	}
+
 	void Hook() {
 		MH_CreateHook((LPVOID)(ImageBase + 0x19E9B10), SpawnBot, (LPVOID*)&SpawnBotOG);
 
@@ -287,6 +310,8 @@ namespace Bots {
 		MH_CreateHook((LPVOID)(ImageBase + 0x163C300), OnPerceptionSensed, (LPVOID*)&OnPerceptionSensedOG);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x49932C0), OnActorBump, (LPVOID*)&OnActorBumpOG);
+
+		HookVTable(UAthenaNavSystem::GetDefaultObj(), 0x53, InitializeForWorld, (LPVOID*)&InitializeForWorldOG);
 
 		Log("Hooked Bots!");
 	}
