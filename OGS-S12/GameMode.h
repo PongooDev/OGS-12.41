@@ -91,6 +91,8 @@ namespace GameMode {
 				GameState->AirCraftBehavior = Playlist->AirCraftBehavior;
 				GameState->OnRep_Aircraft();
 
+				GameState->WorldLevel = Playlist->LootLevel;
+
 				if (Globals::bEventEnabled) {
 					Log("Event is loaded!");
 
@@ -171,26 +173,9 @@ namespace GameMode {
 				GameState->OnRep_CurrentPlaylistId();
 				GameState->OnRep_CurrentPlaylistInfo();
 
-				FName NetDriverDef = UKismetStringLibrary::Conv_StringToName(FString(L"GameNetDriver"));
-
-				UNetDriver* NetDriver = CreateNetDriver(UEngine::GetEngine(), UWorld::GetWorld(), NetDriverDef);
-				NetDriver->NetDriverName = NetDriverDef;
-				NetDriver->World = UWorld::GetWorld();
-
-				FString Error;
-				FURL url = FURL();
-				url.Port = 7777;
-
-				InitListen(NetDriver, UWorld::GetWorld(), url, false, Error);
-				SetWorld(NetDriver, UWorld::GetWorld());
-
-				UWorld::GetWorld()->NetDriver = NetDriver;
-
-				for (size_t i = 0; i < UWorld::GetWorld()->LevelCollections.Num(); i++) {
-					UWorld::GetWorld()->LevelCollections[i].NetDriver = NetDriver;
-				}
-
-				SetWorld(UWorld::GetWorld()->NetDriver, UWorld::GetWorld());
+				UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_001"), true, true, FLatentActionInfo());
+				UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_FT_a"), true, true, FLatentActionInfo());
+				UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_FT_b"), true, true, FLatentActionInfo());
 
 				for (int i = 0; i < GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels.Num(); i++)
 				{
@@ -217,6 +202,27 @@ namespace GameMode {
 				}
 				GameState->OnRep_AdditionalPlaylistLevelsStreamed();
 				GameState->OnFinishedStreamingAdditionalPlaylistLevel();
+
+				FName NetDriverDef = UKismetStringLibrary::Conv_StringToName(FString(L"GameNetDriver"));
+
+				UNetDriver* NetDriver = CreateNetDriver(UEngine::GetEngine(), UWorld::GetWorld(), NetDriverDef);
+				NetDriver->NetDriverName = NetDriverDef;
+				NetDriver->World = UWorld::GetWorld();
+
+				FString Error;
+				FURL url = FURL();
+				url.Port = 7777;
+
+				InitListen(NetDriver, UWorld::GetWorld(), url, false, Error);
+				SetWorld(NetDriver, UWorld::GetWorld());
+
+				UWorld::GetWorld()->NetDriver = NetDriver;
+
+				for (size_t i = 0; i < UWorld::GetWorld()->LevelCollections.Num(); i++) {
+					UWorld::GetWorld()->LevelCollections[i].NetDriver = NetDriver;
+				}
+
+				SetWorld(UWorld::GetWorld()->NetDriver, UWorld::GetWorld());
 
 				GameMode->bWorldIsReady = true;
 
@@ -405,13 +411,6 @@ namespace GameMode {
 			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
 			FactionBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusFlying);
 			FactionBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
-
-			if (FactionBot->PC->BrainComponent) {
-				Log("Braincomp");
-			}
-			else {
-				Log("Noooo");
-			}
 		}
 
 		for (auto PlayerBot : PlayerBotArray)

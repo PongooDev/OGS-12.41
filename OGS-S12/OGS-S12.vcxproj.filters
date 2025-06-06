@@ -93,9 +93,6 @@
     <ClInclude Include="SDK\SDK\AIModule_structs.hpp">
       <Filter>SDK\SDK</Filter>
     </ClInclude>
-    <ClInclude Include="SDK\SDK\AIModule_parameters.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PlayerBots.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -104,6 +101,9 @@
     </ClInclude>
     <ClInclude Include="Quests.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SDK\SDK\AIModule_parameters.hpp">
+      <Filter>SDK\SDK</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

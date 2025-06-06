@@ -160,10 +160,10 @@ namespace Tick {
 			AccoladeTickingService::Tick(GameMode, GameState);
 		}
 
-		/*if (Globals::bBossesEnabled && !Globals::bEventEnabled && GameState->GamePhase > EAthenaGamePhase::Warmup)
+		if (Globals::bBossesEnabled && !Globals::bEventEnabled && GameState->GamePhase > EAthenaGamePhase::Warmup)
 		{
 			Bosses::TickBots();
-		}*/
+		}
 
 		if (Globals::bBotsEnabled && !Globals::bEventEnabled) {
 			PlayerBots::Tick();

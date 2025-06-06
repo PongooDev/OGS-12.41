@@ -35,17 +35,6 @@ namespace Bots {
 		AFortPlayerPawnAthena* Ret = BotMutator->SpawnBot(BotData->PawnClass, SpawnLocator, SpawnLoc, SpawnRot, true);
 		AFortAthenaAIBotController* PC = (AFortAthenaAIBotController*)Ret->Controller;
 
-		static UBehaviorTree* BehaviorTree = StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2");
-		static UBlackboardData* Blackboard = StaticLoadObject<UBlackboardData>("/Game/Athena/AI/MANG/BehaviorTree/BB_MANG2.BB_MANG2");
-		if (!BehaviorTree) 
-		{
-			Log("Behaviourtree does not exist!");
-		}
-		if (!Blackboard) 
-		{
-			Log("Blackboard doesent exist!");
-		}
-
 		PC->CosmeticLoadoutBC = BotData->CharacterCustomization->CustomizationLoadout;
 		PC->CachedPatrollingComponent = (UFortAthenaNpcPatrollingComponent*)UGameplayStatics::SpawnObject(UFortAthenaNpcPatrollingComponent::StaticClass(), PC);
 		for (int32 i = 0; i < BotData->CharacterCustomization->CustomizationLoadout.Character->HeroDefinition->Specializations.Num(); i++)
@@ -69,6 +58,17 @@ namespace Bots {
 		DWORD CustomSquadId = RuntimeBotData.CustomSquadId;
 		BYTE TrueByte = 1;
 		BYTE FalseByte = 0;
+
+		static UBehaviorTree* BehaviorTree = StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2");
+		static UBlackboardData* Blackboard = StaticLoadObject<UBlackboardData>("/Game/Athena/AI/MANG/BehaviorTree/BB_MANG2.BB_MANG2");
+		if (!BehaviorTree)
+		{
+			Log("Behaviourtree does not exist!");
+		}
+		if (!Blackboard)
+		{
+			Log("Blackboard doesent exist!");
+		}
 
 		BotManagerSetup(__int64(BotManager), __int64(Ret), __int64(BotData->BehaviorTree), 0, &CustomSquadId, 0, __int64(BotData->StartupInventory), __int64(BotData->BotNameSettings), 0, &FalseByte, 0, &TrueByte, RuntimeBotData);
 
@@ -107,26 +107,41 @@ namespace Bots {
 			}
 		}
 
-		if (!bot->PC->BrainComponent) {
-			Log("tg");
+		if (!PC->BrainComponent) {
+			PC->BrainComponent = (UBrainComponent*)UGameplayStatics::SpawnObject(UBrainComponent::StaticClass(), PC);
+			PC->BrainComponent->Activate(false);
+			PC->BrainComponent->SetActive(true, false);
+			PC->BrainComponent->OnRep_IsActive();
 		}
-		else {
-			Log("gjhge");
-		}
-		bot->PC->UseBlackboard(Blackboard, &bot->PC->Blackboard);
-		bot->PC->BehaviorTree = BehaviorTree;
-		bot->PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
-		if (bot->PC->RunBehaviorTree(BehaviorTree)) {
-			Log("Nice!");
-		}
-		else {
-			Log("damn...");
-		}
+
+		PC->UseBlackboard(Blackboard, &PC->Blackboard);
+		PC->OnUsingBlackBoard(PC->Blackboard, Blackboard);
+
+		PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
+
+		PC->BehaviorTree = BehaviorTree;
+		PC->RunBehaviorTree(BehaviorTree);
+		PC->BlueprintOnBehaviorTreeStarted();
 
 		static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
 		static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
-		bot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
-		bot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
+		PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
+		PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
+
+		PC->PathFollowingComponent->MyNavData = ((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData;
+		PC->PathFollowingComponent->OnNavDataRegistered(((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData);
+		PC->PathFollowingComponent->Activate(false);
+		PC->PathFollowingComponent->SetActive(true, false);
+		PC->PathFollowingComponent->OnRep_IsActive();
+
+		Ret->Mesh->AnimBlueprintGeneratedClass = StaticLoadObject<UClass>("/Game/Athena/AI/MANG/AnimSet/MANG_PatrolLayerAnimBP.MANG_PatrolLayerAnimBP_C");
+		Ret->OnRep_AnimBPOverride();
+
+		PC->Possess(Ret);
+		PC->RunBehaviorTree(BehaviorTree);
+		PC->BlueprintOnBehaviorTreeStarted();
+
+		PC->OnRep_Pawn();
 
 		return Ret;
 	}

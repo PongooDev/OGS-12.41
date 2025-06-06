@@ -66,6 +66,28 @@ namespace PC {
 		return ServerAcknowledgePossessionOG(PC, Pawn);
 	}
 
+	inline void (*ServerLoadingScreenDroppedOG)(AFortPlayerControllerAthena* PC);
+	inline void ServerLoadingScreenDropped(AFortPlayerControllerAthena* PC)
+	{
+		AFortPlayerStateAthena* PlayerState = (AFortPlayerStateAthena*)PC->PlayerState;
+		AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
+		AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+		auto Pawn = (AFortPlayerPawn*)PC->Pawn;
+
+		/*auto PhantomBooth = StaticLoadObject<UClass>("/Game/Athena/Items/EnvironmentalItems/HidingProps/Props/B_HidingProp_PhantomBooth.B_HidingProp_PhantomBooth_C");
+		if (PhantomBooth) {
+			Log("PhantomBooth Exists");
+			auto SpawnLoc = Pawn->K2_GetActorLocation() + Pawn->GetActorForwardVector() * 300.f;
+			auto SpawnRot = Pawn->K2_GetActorRotation();
+			AActor* SpawnedBooth = SpawnActor<AActor>(SpawnLoc, SpawnRot, nullptr, PhantomBooth);
+		}
+		else {
+			Log("PhantomBooth does not exist!");
+		}*/
+
+		return ServerLoadingScreenDroppedOG(PC);
+	}
+
 	inline void ServerAttemptAircraftJump(UFortControllerComponent_Aircraft* Comp, FRotator Rotation)
 	{
 		AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
@@ -743,6 +765,8 @@ namespace PC {
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x269, ServerReadyToStartMatch, (LPVOID*)&ServerReadyToStartMatchOG);
 
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x10D, ServerAcknowledgePossession, (LPVOID*)&ServerAcknowledgePossessionOG);
+
+		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x26B, ServerLoadingScreenDropped, (LPVOID*)&ServerLoadingScreenDroppedOG);
 
 		HookVTable(UFortControllerComponent_Aircraft::GetDefaultObj(), 0x89, ServerAttemptAircraftJump, nullptr);
 

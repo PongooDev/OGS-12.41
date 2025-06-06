@@ -251,8 +251,8 @@ namespace Quests {
 	}
 
 	void Hook() {
-		MH_CreateHook((LPVOID)(ImageBase + 0x23B1420), SendComplexCustomStatEvent, (LPVOID*)&SendComplexCustomStatEventOG);
-		MH_CreateHook((LPVOID)(ImageBase + 0x23A5180), GetQuestContext, nullptr);
+		//MH_CreateHook((LPVOID)(ImageBase + 0x23B1420), SendComplexCustomStatEvent, (LPVOID*)&SendComplexCustomStatEventOG);
+		//MH_CreateHook((LPVOID)(ImageBase + 0x23A5180), GetQuestContext, nullptr);
 
 		Log("Quests Hooked!");
 	}

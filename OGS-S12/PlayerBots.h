@@ -452,6 +452,9 @@ public:
     }
 
     void Pickup(AFortPickup* Pickup) {
+        if (!Pickup)
+            return;
+
         GiveItemBot(Pickup->PrimaryPickupItemEntry.ItemDefinition, Pickup->PrimaryPickupItemEntry.Count, Pickup->PrimaryPickupItemEntry.LoadedAmmo);
         if (((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP() && ((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP() != Pickup->PrimaryPickupItemEntry.ItemDefinition)
         {
@@ -470,12 +473,19 @@ public:
     }
 
     void PickupAllItemsInRange(float Range = 320.f) {
+        if (!Pawn || !PC) {
+            return;
+        }
+
         static auto PickupClass = AFortPickupAthena::StaticClass();
         TArray<AActor*> Array;
         UGameplayStatics::GetDefaultObj()->GetAllActorsOfClass(UWorld::GetWorld(), PickupClass, &Array);
 
         for (size_t i = 0; i < Array.Num(); i++)
         {
+            if (!Array[i] || Array[i]->bHidden)
+                continue;
+
             if (Array[i]->GetDistanceTo(Pawn) < Range)
             {
                 Pickup((AFortPickupAthena*)Array[i]);
