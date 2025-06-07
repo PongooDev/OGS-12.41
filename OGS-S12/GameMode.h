@@ -6,6 +6,11 @@
 #include "Quests.h"
 
 namespace GameMode {
+	namespace Event {
+		static inline UClass* Starter;
+		static inline UObject* JerkyLoader;
+	}
+
 	uint8 NextIdx = 3;
 	int CurrentPlayersOnTeam = 0;
 	int MaxPlayersOnTeam = 1;
@@ -92,6 +97,7 @@ namespace GameMode {
 				GameState->OnRep_Aircraft();
 
 				GameState->WorldLevel = Playlist->LootLevel;
+				GameMode->AISettings = Playlist->AISettings;
 
 				if (Globals::bEventEnabled) {
 					Log("Event is loaded!");
@@ -168,6 +174,11 @@ namespace GameMode {
 					Gliders = GetAllObjectsOfClass<UAthenaGliderItemDefinition>();
 					Contrails = GetAllObjectsOfClass<UAthenaSkyDiveContrailItemDefinition>();
 					Dances = GetAllObjectsOfClass<UAthenaDanceItemDefinition>();
+				}
+
+				if (Globals::bEventEnabled) {
+					Event::Starter = StaticLoadObject<UClass>("/CycloneJerky/Gameplay/BP_Jerky_Scripting.BP_Jerky_Scripting_C");
+					Event::JerkyLoader = UObject::FindObject<UObject>("BP_Jerky_Loader_C JerkyLoaderLevel.JerkyLoaderLevel.PersistentLevel.BP_Jerky_Loader_2");
 				}
 
 				GameState->OnRep_CurrentPlaylistId();
@@ -395,6 +406,14 @@ namespace GameMode {
 				PlayerBotArray[i]->Pawn->BeginSkydiving(true);
 				PlayerBotArray[i]->BotState = EBotState::Skydiving;
 			}
+		}
+
+		if (Globals::bEventEnabled)
+		{
+			UFunction* StartEventFunc = Event::JerkyLoader->Class->GetFunction("BP_Jerky_Loader_C", "startevent");
+
+			float ToStart = 0.f;
+			Event::JerkyLoader->ProcessEvent(StartEventFunc, &ToStart);
 		}
 		
 		return OriginalOnAircraftExitedDropZone(GameMode, FortAthenaAircraft);

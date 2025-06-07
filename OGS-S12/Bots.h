@@ -249,7 +249,7 @@ namespace Bots {
 	wchar_t* (*OnPerceptionSensedOG)(ABP_PhoebePlayerController_C* PC, AActor* SourceActor, FAIStimulus& Stimulus);
 	wchar_t* OnPerceptionSensed(ABP_PhoebePlayerController_C* PC, AActor* SourceActor, FAIStimulus& Stimulus)
 	{
-		if (SourceActor->IsA(AFortPlayerPawnAthena::StaticClass()) && Cast<AFortPlayerPawnAthena>(SourceActor)->Controller && !Cast<AFortPlayerPawnAthena>(SourceActor)->Controller->IsA(ABP_PhoebePlayerController_C::StaticClass()) /*!Cast<AFortPlayerPawnAthena>(SourceActor)->Controller->IsA(ABP_PhoebePlayerController_C::StaticClass())*/)
+		if (SourceActor->IsA(AFortPlayerPawnAthena::StaticClass()))
 		{
 			for (auto bot : FactionBots)
 			{
@@ -288,6 +288,14 @@ namespace Bots {
 				bot->Pawn->EquipWeaponDefinition(bot->Pickaxe, bot->PickaxeGuid);
 
 				bot->Pawn->PawnStartFire(0);
+
+				if (UKismetMathLibrary::GetDefaultObj()->RandomBool()) {
+					bot->Pawn->AddMovementInput((bot->Pawn->GetActorRightVector() * -1.0f), 1.5f, true);
+				}
+				else {
+					bot->Pawn->AddMovementInput(bot->Pawn->GetActorRightVector(), 1.5f, true);
+				}
+
 				bot->Pawn->PawnStopFire(0);
 				break;
 			}

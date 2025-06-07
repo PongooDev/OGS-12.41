@@ -4,14 +4,9 @@
 #include "Looting.h"
 #include "Vehicles.h"
 #include "Quests.h"
+#include "PlayerBots.h"
 
 namespace PC {
-	bool bFirstElimTriggered = false;
-	bool bFirstEliminated = false;
-
-	bool bFirstChestSearched = false;
-	bool bFirstSupplyDropSearched = false;
-
 	// The accolades i need to do (there is way too many accolades so these are just the main ones i want completed)
 	// TODO: Teamscore Accolades (029, 030, 031)
 	// TODO: Damage Accolades (too many to list)
@@ -761,6 +756,27 @@ namespace PC {
 		PC->ClientReturnToMainMenu(L"");
 	}
 
+	void ServerCheat(AFortPlayerControllerAthena* PlayerController, FString& Msg) {
+		Log("ServerCheat Called!");
+		
+		if (Globals::bIsProdServer)
+			return;
+
+		auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
+		auto Math = (UKismetMathLibrary*)UKismetMathLibrary::StaticClass()->DefaultObject;
+		auto Gamemode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+		auto Statics = (UGameplayStatics*)UGameplayStatics::StaticClass()->DefaultObject;
+		
+		std::string Command = Msg.ToString();
+		Log(Command);
+
+		if (Command == "SpawnBot") {
+			if (GameState->GamePhase > EAthenaGamePhase::Warmup) {
+				PlayerBots::SpawnPlayerBots(PlayerController, EBotState::Landed);
+			}
+		}
+	}
+
 	void Hook() {
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x269, ServerReadyToStartMatch, (LPVOID*)&ServerReadyToStartMatchOG);
 
@@ -787,6 +803,9 @@ namespace PC {
 		HookVTable(APlayerPawn_Athena_C::StaticClass()->DefaultObject, 0x1D2, ServerReviveFromDBNO, nullptr);
 
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x265, ServerReturnToMainMenu, nullptr);
+
+		//HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x1C5, ServerCheat, nullptr);
+		MH_CreateHook((LPVOID)(ImageBase + 0xF703E0), ServerCheat, nullptr);
 
 		for (size_t i = 0; i < UObject::GObjects->Num(); i++)
 		{

@@ -58,6 +58,12 @@ AFortAthenaMutator_Bots* BotMutator = nullptr;
 
 static TArray<AActor*> PlayerStarts;
 
+bool bFirstElimTriggered = false;
+bool bFirstEliminated = false;
+
+bool bFirstChestSearched = false;
+bool bFirstSupplyDropSearched = false;
+
 void Log(const std::string& msg)
 {
 	static bool firstCall = true;

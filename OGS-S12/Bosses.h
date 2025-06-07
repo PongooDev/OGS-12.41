@@ -91,6 +91,10 @@ public:
 	// the bot this bot will revive when downed, or the other way round
 	FactionBot* CurrentAssignedDBNOBot;
 
+	bool bIsReviving = false;
+
+	float ReviveTime = 0.f;
+
 	bool bWasReportedStuck = false;
 
 public:
@@ -268,6 +272,44 @@ public:
 
 		bot->bIsStressed = IsStressed(bot->Pawn, bot->PC);
 
+		if (bot->bIsReviving) {
+			bot->PC->ReviveTarget = bot->CurrentAssignedDBNOBot->Pawn;
+			if (Statics->GetTimeSeconds(UWorld::GetWorld()) >= bot->ReviveTime) {
+				auto PlayerState = (AFortPlayerStateAthena*)bot->CurrentAssignedDBNOBot->PC->PlayerState;
+				auto AbilitySystemComp = (UFortAbilitySystemComponentAthena*)PlayerState->AbilitySystemComponent;
+
+				FGameplayEventData Data{};
+				Data.EventTag = bot->CurrentAssignedDBNOBot->Pawn->EventReviveTag;
+				Data.ContextHandle = PlayerState->AbilitySystemComponent->MakeEffectContext();
+				Data.Instigator = bot->PC;
+				Data.Target = bot->CurrentAssignedDBNOBot->Pawn;
+				Data.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(bot->CurrentAssignedDBNOBot->Pawn);
+				Data.TargetTags = bot->CurrentAssignedDBNOBot->Pawn->GameplayTags;
+				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(bot->CurrentAssignedDBNOBot->Pawn, bot->CurrentAssignedDBNOBot->Pawn->EventReviveTag, Data);
+
+				for (auto& Ability : AbilitySystemComp->ActivatableAbilities.Items)
+				{
+					const std::string AbilityName = Ability.Ability->Class->GetName();
+
+					if (AbilityName.contains("GAB_AthenaDBNO") || AbilityName.contains("GAB_AthenaDBNORevive"))
+					{
+						AbilitySystemComp->ServerCancelAbility(Ability.Handle, Ability.ActivationInfo);
+						AbilitySystemComp->ServerEndAbility(Ability.Handle, Ability.ActivationInfo, Ability.ActivationInfo.PredictionKeyWhenActivated);
+						AbilitySystemComp->ClientCancelAbility(Ability.Handle, Ability.ActivationInfo);
+						AbilitySystemComp->ClientEndAbility(Ability.Handle, Ability.ActivationInfo);
+					}
+				}
+
+				bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO = false;
+				bot->CurrentAssignedDBNOBot->Pawn->OnRep_IsDBNO();
+				bot->CurrentAssignedDBNOBot->Pawn->SetHealth(30);
+				PlayerState->DeathInfo = {};
+				PlayerState->OnRep_DeathInfo();
+
+				bot->CurrentAssignedDBNOBot->Pawn->EquipWeaponDefinition(bot->Weapon, bot->WeaponGuid);
+			}
+		}
+
 		if (!bot->bIsStressed && bot->PatrolPath && bot->CurrentPatrolPointLoc.IsZero() && !bot->bIsPatrolling) {
 			BossesBTService_Patrolling::GetPatrolLocation(bot);
 		}
@@ -329,7 +371,7 @@ namespace Bosses {
 			BossesBTService_AIEvaluator Evaluator;
 			Evaluator.Tick(bot);
 
-			if (bot->CurrentAssignedDBNOBot && bot->CurrentAssignedDBNOBot->Pawn && bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO) {
+			if (bot->CurrentAssignedDBNOBot && bot->CurrentAssignedDBNOBot->Pawn && bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO && !Threatened) {
 				FVector BotPos = bot->Pawn->K2_GetActorLocation();
 				float Distance = Math->Vector_Distance(BotPos, bot->CurrentAssignedDBNOBot->Pawn->K2_GetActorLocation());
 				auto TestRot = Math->FindLookAtRotation(BotPos, bot->CurrentAssignedDBNOBot->Pawn->K2_GetActorLocation());
@@ -338,47 +380,26 @@ namespace Bosses {
 				bot->PC->K2_SetActorRotation(TestRot, true);
 
 				if (Distance < 200.0f) {
-					auto PlayerState = (AFortPlayerStateAthena*)bot->CurrentAssignedDBNOBot->PC->PlayerState;
-					auto AbilitySystemComp = (UFortAbilitySystemComponentAthena*)PlayerState->AbilitySystemComponent;
-
-					FGameplayEventData Data{};
-					Data.EventTag = bot->CurrentAssignedDBNOBot->Pawn->EventReviveTag;
-					Data.ContextHandle = PlayerState->AbilitySystemComponent->MakeEffectContext();
-					Data.Instigator = bot->PC;
-					Data.Target = bot->CurrentAssignedDBNOBot->Pawn;
-					Data.TargetData = UAbilitySystemBlueprintLibrary::AbilityTargetDataFromActor(bot->CurrentAssignedDBNOBot->Pawn);
-					Data.TargetTags = bot->CurrentAssignedDBNOBot->Pawn->GameplayTags;
-					UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(bot->CurrentAssignedDBNOBot->Pawn, bot->CurrentAssignedDBNOBot->Pawn->EventReviveTag, Data);
-
-					for (auto& Ability : AbilitySystemComp->ActivatableAbilities.Items)
-					{
-						if (Ability.Ability->Class == UGAB_AthenaDBNO_C::StaticClass())
-						{
-							AbilitySystemComp->ServerCancelAbility(Ability.Handle, Ability.ActivationInfo);
-							AbilitySystemComp->ServerEndAbility(Ability.Handle, Ability.ActivationInfo, Ability.ActivationInfo.PredictionKeyWhenActivated);
-							AbilitySystemComp->ClientCancelAbility(Ability.Handle, Ability.ActivationInfo);
-							AbilitySystemComp->ClientEndAbility(Ability.Handle, Ability.ActivationInfo);
-							break;
-						}
+					if (!bot->bIsReviving) {
+						bot->ReviveTime = Statics->GetTimeSeconds(UWorld::GetWorld()) + 9.9;
+						bot->bIsReviving = true;
 					}
-
-					bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO = false;
-					bot->CurrentAssignedDBNOBot->Pawn->OnRep_IsDBNO();
-					bot->CurrentAssignedDBNOBot->Pawn->SetHealth(30);
-					PlayerState->DeathInfo = {};
-					PlayerState->OnRep_DeathInfo();
-
-					bot->CurrentAssignedDBNOBot->Pawn->EquipWeaponDefinition(bot->Weapon, bot->WeaponGuid);
-
 					return;
 				}
 				else {
-					bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
-					//bot->PC->MoveToActor(bot->CurrentAssignedDBNOBot->PC, 100, true, false, true, nullptr, true);
+					if (bot->bIsReviving) {
+						bot->bIsReviving = false;
+					}
+					//bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+					bot->PC->MoveToActor(bot->CurrentAssignedDBNOBot->PC, 100, true, false, true, nullptr, true);
 				}
 
 				bot->tick_counter++;
 				return;
+			}
+
+			if (bot->bIsReviving) {
+				bot->bIsReviving = false;
 			}
 
 			if (bot->Pawn->bIsDBNO && bot->CurrentAssignedDBNOBot) {
@@ -391,8 +412,8 @@ namespace Bosses {
 
 				if (Distance < 100.0f) {}
 				else {
-					bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
-					//bot->PC->MoveToActor(bot->CurrentAssignedDBNOBot->PC, 100, true, false, true, nullptr, true);
+					//bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+					bot->PC->MoveToActor(bot->CurrentAssignedDBNOBot->PC, 100, true, false, true, nullptr, true);
 				}
 
 				bot->tick_counter++;
@@ -411,6 +432,12 @@ namespace Bosses {
 			if (!Threatened && !Alerted && !LKP && bot->PatrolPath && bot->bIsPatrolling && !bot->bIsWaitingForNextPatrol && !bot->CurrentPatrolPointLoc.IsZero()) {
 				bot->PC->MoveToLocation(bot->CurrentPatrolPointLoc, 100.f, false, false, false, true, nullptr, true);
 				//bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+			}
+
+			if (!Threatened && !Alerted && !LKP) {
+				if (bot->CurrentAssignedDBNOBot && bot->CurrentAssignedDBNOBot->bIsStressed) {
+					bot->PC->MoveToActor(bot->CurrentAssignedDBNOBot->PC, Math->RandomFloatInRange(400, 1000), true, false, true, nullptr, true);
+				}
 			}
 
 			/*if (Alerted || Threatened || LKP) {

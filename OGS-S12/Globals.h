@@ -1,6 +1,8 @@
 #pragma once
 
 namespace Globals {
+	bool bIsProdServer = false;
+
 	bool bCreativeEnabled = false;
 	bool bSTWEnabled = false;
 	bool bEventEnabled = false;
