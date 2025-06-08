@@ -25,6 +25,12 @@ enum class EBotState : uint8 {
     Stuck
 };
 
+enum class EBotWarmupChoice {
+    Emote,
+    MoveToPlayerEmote,
+    MAX
+};
+
 enum class EBotStrafeType {
     StrafeLeft,
     StrafeRight
@@ -39,6 +45,10 @@ enum class ELootableType {
 std::vector<class PlayerBot*> PlayerBotArray{};
 struct PlayerBot
 {
+public:
+    // Additional State Enums : Seprated so its cleaner
+    EBotWarmupChoice BotWarmupChoice = EBotWarmupChoice::MAX;
+
 public:
     // So we can track the current tick that the bot is doing
     uint64_t tick_counter = 0;
@@ -93,6 +103,12 @@ public:
 
     // General purpose timer
     float TimeToNextAction = 0.f;
+
+    // The start time of this current lootable
+    float LootTargetStartTime = 0.f;
+
+    // The distance between the bot and the lootable
+    float LastLootTargetDistance = 0.f;
 
 public:
     void OnDied(AFortPlayerStateAthena* KillerState, AActor* DamageCauser, FName BoneName)
@@ -310,7 +326,9 @@ public:
                 if (PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].ActivationInfo.PredictionKeyWhenActivated.bIsStale) {
                     continue;
                 }
-                PlayerState->AbilitySystemComponent->ServerTryActivateAbility(PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].Handle, PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].InputPressed, PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].ActivationInfo.PredictionKeyWhenActivated);
+                if (PlayerState->AbilitySystemComponent->CanActivateAbilityWithMatchingTag(PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].Ability->AbilityTags)) {
+                    PlayerState->AbilitySystemComponent->ServerTryActivateAbility(PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].Handle, PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].InputPressed, PlayerState->AbilitySystemComponent->ActivatableAbilities.Items[i].ActivationInfo.PredictionKeyWhenActivated);
+                }
                 break;
             }
         }
@@ -455,10 +473,6 @@ public:
             return;
 
         GiveItemBot(Pickup->PrimaryPickupItemEntry.ItemDefinition, Pickup->PrimaryPickupItemEntry.Count, Pickup->PrimaryPickupItemEntry.LoadedAmmo);
-        if (((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP() && ((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP() != Pickup->PrimaryPickupItemEntry.ItemDefinition)
-        {
-            GiveItemBot(((UFortWeaponItemDefinition*)Pickup->PrimaryPickupItemEntry.ItemDefinition)->GetAmmoWorldItemDefinition_BP(), 30);
-        }
 
         Pickup->PickupLocationData.bPlayPickupSound = true;
         Pickup->PickupLocationData.FlyTime = 0.3f;
@@ -788,9 +802,53 @@ public:
             bot->ForceStrafe(false);
         }
 
-        /*if ((bot->tick_counter % 60 == 0) && Speed >= 100 && bot->BotState > EBotState::Landed) { // Works but mostly just spams error logs
+        if ((bot->tick_counter % 90 == 0) && Speed >= 100 && bot->BotState > EBotState::Landed) { // Works but mostly just spams error logs
             bot->Run();
-        }*/
+        }
+    }
+};
+
+class BotsBTService_Warmup{
+public:
+    void DetermineBotWarmupChoice(PlayerBot* bot) {
+        if (UKismetMathLibrary::GetDefaultObj()->RandomBool()) {
+            bot->BotWarmupChoice = EBotWarmupChoice::Emote;
+        }
+        else {
+            bot->BotWarmupChoice = EBotWarmupChoice::MoveToPlayerEmote;
+        }
+    }
+
+public:
+    void Tick(PlayerBot* bot) {
+        if (bot->BotWarmupChoice == EBotWarmupChoice::MAX) {
+            DetermineBotWarmupChoice(bot);
+        }
+        else if (bot->BotWarmupChoice == EBotWarmupChoice::Emote) {
+            if (bot->tick_counter % 300 == 0) {
+                bot->Emote();
+            }
+        }
+        else {
+            if (bot->tick_counter % 300 == 0) {
+                bot->NearestPlayerActor = bot->GetNearestPlayerActor();
+                auto BotPos = bot->Pawn->K2_GetActorLocation();
+                if (bot->NearestPlayerActor) {
+                    FVector Nearest = bot->NearestPlayerActor->K2_GetActorLocation();
+                    if (!Nearest.IsZero()) {
+                        float Dist = Math->Vector_Distance(BotPos, Nearest);
+                        if (Dist < 200.f + rand() % 300) {
+                            bot->LookAt(bot->NearestPlayerActor);
+                            bot->Emote();
+                        }
+                        else {
+                            bot->LookAt(bot->NearestPlayerActor);
+                            bot->PC->MoveToActor(bot->NearestPlayerActor, 100, true, false, true, nullptr, true);
+                        }
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -1028,9 +1086,11 @@ namespace PlayerBots {
             if (!bot || !bot->Pawn || !bot->PC || !bot->PlayerState)
                 continue;
 
-            if (bot->tick_counter <= 150) {
-                bot->tick_counter++;
-                continue;
+            if (GameState->GamePhase <= EAthenaGamePhase::Warmup) {
+                if (bot->tick_counter <= 150) {
+                    bot->tick_counter++;
+                    continue;
+                }
             }
 
             if (bot->BotState > EBotState::Bus) {
@@ -1039,10 +1099,8 @@ namespace PlayerBots {
             }
 
             if (bot->BotState == EBotState::Warmup) {
-                if (bot->tick_counter % 300 == 0) {
-                    bot->Emote();
-                }
-                //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+                BotsBTService_Warmup Warmup;
+                Warmup.Tick(bot);
             }
             else if (bot->BotState == EBotState::PreBus) {
                 bot->Pawn->SetHealth(100);
@@ -1175,6 +1233,33 @@ namespace PlayerBots {
                     bot->PC->K2_SetActorRotation(TestRot, true);
                     bot->LookAt(bot->TargetLootable);
 
+                    float CurrentTime = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
+
+                    if (bot->TargetLootable) {
+                        FVector BotLoc = bot->Pawn->K2_GetActorLocation();
+                        float Dist = Math->Vector_Distance(BotLoc, bot->TargetLootable->K2_GetActorLocation());
+
+                        if (bot->LootTargetStartTime == 0.f) {
+                            bot->LootTargetStartTime = CurrentTime;
+                            bot->LastLootTargetDistance = Dist;
+                        }
+
+                        float Elapsed = CurrentTime - bot->LootTargetStartTime;
+
+                        // if the bot is not getting closer or stuck for more than 8 seconds then we should try go for another lootable
+                        if ((Elapsed > 8.f && Dist > bot->LastLootTargetDistance - 100.f) || Elapsed > 15.f) {
+                            bot->TargetLootable = nullptr;
+                            bot->LootTargetStartTime = 0.f;
+                            continue;
+                        }
+
+                        if (Dist < 300.f) {
+                            bot->LootTargetStartTime = 0.f;
+                        }
+
+                        bot->LastLootTargetDistance = Dist;
+                    }
+
                     if (Dist < 300.f) {
                         bot->PC->StopMovement();
                         bot->Pawn->PawnStopFire(0);
@@ -1220,11 +1305,10 @@ namespace PlayerBots {
                 if (!bot->HasGun()) {
                     bot->BotState = EBotState::Looting;
                 }
-                else {
-                    if (bot->IsPickaxeEquiped()) {
-                        bot->SimpleSwitchToWeapon();
-                    }
+                if (bot->IsPickaxeEquiped()) {
+                    bot->SimpleSwitchToWeapon();
                 }
+
                 FVector BotLoc = bot->Pawn->K2_GetActorLocation();
                 if (bot->NearestPlayerActor) {
                     FVector Nearest = bot->NearestPlayerActor->K2_GetActorLocation();
@@ -1237,9 +1321,9 @@ namespace PlayerBots {
 
                         if (bot->PC->LineOfSightTo(bot->NearestPlayerActor, BotLoc, true)) {
                             if (true) {
-                                float RandomXmod = Math->RandomFloatInRange(-200, 200);
-                                float RandomYmod = Math->RandomFloatInRange(-200, 200);
-                                float RandomZmod = Math->RandomFloatInRange(-200, 200);
+                                float RandomXmod = Math->RandomFloatInRange(-180, 180);
+                                float RandomYmod = Math->RandomFloatInRange(-180, 180);
+                                float RandomZmod = Math->RandomFloatInRange(-180, 180);
 
                                 FVector TargetPosMod{ Nearest.X + RandomXmod, Nearest.Y + RandomYmod, Nearest.Z + RandomZmod };
 
@@ -1248,7 +1332,7 @@ namespace PlayerBots {
                                 bot->PC->SetControlRotation(Rot);
                                 bot->PC->K2_SetActorRotation(Rot, true);
 
-                                bot->PC->K2_SetFocalPoint(TargetPosMod);
+                                //bot->PC->K2_SetFocalPoint(TargetPosMod);
                             }
 
                             if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.001)) {

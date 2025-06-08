@@ -321,7 +321,6 @@ namespace GameMode {
 		PickDef = CosmecticLoadoutPC.Pickaxe != nullptr ? CosmecticLoadoutPC.Pickaxe : StaticLoadObject<UAthenaPickaxeItemDefinition>("/Game/Athena/Items/Weapons/WID_Harvest_Pickaxe_Athena_C_T01.WID_Harvest_Pickaxe_Athena_C_T01");
 		//UFortWeaponMeleeItemDefinition* PickDef = StaticLoadObject<UFortWeaponMeleeItemDefinition>("/Game/Athena/Items/Weapons/WID_Harvest_Pickaxe_Athena_C_T01.WID_Harvest_Pickaxe_Athena_C_T01");
 		if (PickDef) {
-			Log("Pick Does Exist!");
 			Inventory::GiveItem(PC, PickDef->WeaponDefinition, 1, 0);
 		}
 		else {
@@ -340,6 +339,10 @@ namespace GameMode {
 
 		GameState->OnRep_SafeZoneIndicator();
 		GameState->OnRep_SafeZonePhase();
+
+		PlayerState->ForceNetUpdate();
+		Pawn->ForceNetUpdate();
+		PC->ForceNetUpdate();
 
 		return Pawn;
 		//return (AFortPlayerPawnAthena*)GameMode->SpawnDefaultPawnAtTransform(Player, Transform);

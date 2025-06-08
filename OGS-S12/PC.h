@@ -756,9 +756,7 @@ namespace PC {
 		PC->ClientReturnToMainMenu(L"");
 	}
 
-	void ServerCheat(AFortPlayerControllerAthena* PlayerController, FString& Msg) {
-		Log("ServerCheat Called!");
-		
+	void ServerCheat(AFortPlayerControllerAthena* PC, FString& Msg) {
 		if (Globals::bIsProdServer)
 			return;
 
@@ -772,7 +770,25 @@ namespace PC {
 
 		if (Command == "SpawnBot") {
 			if (GameState->GamePhase > EAthenaGamePhase::Warmup) {
-				PlayerBots::SpawnPlayerBots(PlayerController, EBotState::Landed);
+				PlayerBots::SpawnPlayerBots(PC->Pawn, EBotState::Landed);
+			}
+			Log("Spawned Bot!");
+		}
+		else if (Command.contains("SpawnAmountBots ")) {
+			std::vector<std::string> args = TextManipUtils::SplitWhitespace(Command);
+			int AmountToSpawn = std::stoi(args[1]);
+			for (int i = 0; i < AmountToSpawn; i++) {
+				if (GameState->GamePhase > EAthenaGamePhase::Warmup) {
+					PlayerBots::SpawnPlayerBots(PC->Pawn, EBotState::Landed);
+				}
+			}
+		}
+		else if (Command == "GodMode") {
+			if (!PC->MyFortPawn->bIsInvulnerable) {
+				PC->MyFortPawn->bIsInvulnerable = true;
+			}
+			else {
+				PC->MyFortPawn->bIsInvulnerable = false;
 			}
 		}
 	}
@@ -804,8 +820,8 @@ namespace PC {
 
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x265, ServerReturnToMainMenu, nullptr);
 
-		//HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x1C5, ServerCheat, nullptr);
-		MH_CreateHook((LPVOID)(ImageBase + 0xF703E0), ServerCheat, nullptr);
+		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x1C5, ServerCheat, nullptr);
+		//MH_CreateHook((LPVOID)(ImageBase + 0xF703E0), ServerCheat, nullptr);
 
 		for (size_t i = 0; i < UObject::GObjects->Num(); i++)
 		{
