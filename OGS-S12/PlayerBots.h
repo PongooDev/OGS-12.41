@@ -869,8 +869,8 @@ public:
         bot->TargetDropZone = DropZoneLocations[rand() % DropZoneLocations.size()];
 
         // makes it more realisetic cause they dont clutter together
-        bot->TargetDropZone.X += Math->RandomFloatInRange(-1000.f, 1000.f);
-        bot->TargetDropZone.Y += Math->RandomFloatInRange(-1000.f, 1000.f);
+        bot->TargetDropZone.X += Math->RandomFloatInRange(-800.f, 800.f);
+        bot->TargetDropZone.Y += Math->RandomFloatInRange(-800.f, 800.f);
     }
 
 public:
