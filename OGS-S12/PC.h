@@ -791,6 +791,12 @@ namespace PC {
 				PC->MyFortPawn->bIsInvulnerable = false;
 			}
 		}
+		else if (Command == "DumpLoc") {
+			FVector Loc = PC->Pawn->K2_GetActorLocation();
+			Log("X: " + std::to_string(Loc.X));
+			Log("Y: " + std::to_string(Loc.Y));
+			Log("Z: " + std::to_string(Loc.Z));
+		}
 	}
 
 	void Hook() {

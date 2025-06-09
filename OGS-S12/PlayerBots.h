@@ -1,6 +1,7 @@
 #pragma once
 #include "framework.h"
 #include "BotNames.h"
+#include "POI_Locs.h"
 
 #include "Quests.h"
 
@@ -91,6 +92,12 @@ public:
 
     // Has the bot thanked the bus driver
     bool bHasThankedBusDriver = false;
+
+    // The dropzone that the bot will attempt to land at
+    FVector TargetDropZone = FVector();
+
+    // The closest distance achieved to the targetdropzone, will be used mostly for determining bus drop
+    float ClosestDistToDropZone = FLT_MAX;
 
     // Is the bot currently strafing (combat technique & Unstuck method)
     bool bIsCurrentlyStrafing = false;
@@ -830,7 +837,7 @@ public:
             }
         }
         else {
-            if (bot->tick_counter % 300 == 0) {
+            if (bot->tick_counter % 150 == 0) {
                 bot->NearestPlayerActor = bot->GetNearestPlayerActor();
                 auto BotPos = bot->Pawn->K2_GetActorLocation();
                 if (bot->NearestPlayerActor) {
@@ -839,7 +846,9 @@ public:
                         float Dist = Math->Vector_Distance(BotPos, Nearest);
                         if (Dist < 200.f + rand() % 300) {
                             bot->LookAt(bot->NearestPlayerActor);
-                            bot->Emote();
+                            if (UKismetMathLibrary::GetDefaultObj()->RandomBool()) {
+                                bot->Emote();
+                            }
                         }
                         else {
                             bot->LookAt(bot->NearestPlayerActor);
@@ -847,6 +856,125 @@ public:
                         }
                     }
                 }
+            }
+        }
+    }
+};
+
+class BotsBTService_AIDropZone {
+public:
+    void ChooseDropZone(PlayerBot* bot) {
+        if (DropZoneLocations.empty()) return;
+        
+        bot->TargetDropZone = DropZoneLocations[rand() % DropZoneLocations.size()];
+
+        // makes it more realisetic cause they dont clutter together
+        bot->TargetDropZone.X += Math->RandomFloatInRange(-1000.f, 1000.f);
+        bot->TargetDropZone.Y += Math->RandomFloatInRange(-1000.f, 1000.f);
+    }
+
+public:
+    void Tick(PlayerBot* bot) {
+        auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
+        auto Math = (UKismetMathLibrary*)UKismetMathLibrary::StaticClass()->DefaultObject;
+        auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+        auto Statics = (UGameplayStatics*)UGameplayStatics::StaticClass()->DefaultObject;
+
+        if (bot->TargetDropZone.IsZero()) {
+            ChooseDropZone(bot);
+            return;
+        }
+
+        if (bot->BotState == EBotState::Bus) {
+            bot->Pawn->SetShield(0);
+
+            if (!bot->bHasThankedBusDriver && GameState->GamePhase == EAthenaGamePhase::Aircraft && Math->RandomBoolWithWeight(0.0005f))
+            {
+                bot->bHasThankedBusDriver = true;
+                bot->PC->ThankBusDriver();
+            }
+
+            AActor* Bus = GameState->GetAircraft(0);
+            if (!Bus) {
+                return;
+            }
+
+            FVector BusLocation = Bus->K2_GetActorLocation();
+            FVector DropTarget = bot->TargetDropZone;
+            DropTarget.Z = BusLocation.Z;
+
+            if (GameState->GamePhase == EAthenaGamePhase::SafeZones) {
+                Log("Force Jump");
+                bot->Pawn->K2_TeleportTo(DropTarget, {});
+                bot->Pawn->BeginSkydiving(true);
+                bot->BotState = EBotState::Skydiving;
+
+                return;
+            }
+
+            float DistanceToDrop = Math->Vector_Distance(BusLocation, DropTarget);
+            //Log("DistanceToDrop: " + std::to_string(DistanceToDrop));
+            //Log("ClosestDistToDropZone: " + std::to_string(bot->ClosestDistToDropZone));
+            if (DistanceToDrop < bot->ClosestDistToDropZone) {
+                bot->ClosestDistToDropZone = DistanceToDrop;
+            }
+            else {
+                if (!bot->bHasThankedBusDriver && Math->RandomBoolWithWeight(0.5f)) {
+                    bot->bHasThankedBusDriver = true;
+                    bot->PC->ThankBusDriver();
+                }
+                if (Math->RandomBoolWithWeight(0.75)) {
+                    bot->Pawn->K2_TeleportTo(GameState->GetAircraft(0)->K2_GetActorLocation(), {});
+                    bot->Pawn->BeginSkydiving(true);
+                    bot->BotState = EBotState::Skydiving;
+                }
+            }
+
+            return;
+        }
+
+        auto BotPos = bot->Pawn->K2_GetActorLocation();
+        if (!bot->TargetDropZone.IsZero()) {
+            bot->TargetDropZone.Z = BotPos.Z;
+        }
+
+        if (bot->BotState == EBotState::Skydiving) {
+            if (!bot->Pawn->bIsSkydiving) {
+                bot->BotState = EBotState::Gliding;
+            }
+
+            if (!bot->TargetDropZone.IsZero()) {
+                // Dont know a better way to skydive
+                bot->Pawn->AddMovementInput(Math->NegateVector(bot->Pawn->GetActorUpVector()), 1, true);
+
+                float Dist = Math->Vector_Distance(BotPos, bot->TargetDropZone);
+                auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetDropZone);
+
+                bot->PC->SetControlRotation(TestRot);
+                bot->PC->K2_SetActorRotation(TestRot, true);
+
+                bot->PC->MoveToLocation(bot->TargetDropZone, 200.f, true, false, false, true, nullptr, true);
+            }
+        }
+        else if (bot->BotState == EBotState::Gliding) {
+            if (bot->Pawn->bIsSkydiving) {
+                bot->BotState = EBotState::Skydiving;
+            }
+
+            FVector Vel = bot->Pawn->GetVelocity();
+            float Speed = Vel.Z;
+            if (Speed == 0.f) {
+                bot->BotState = EBotState::Landed;
+            }
+
+            if (!bot->TargetDropZone.IsZero()) {
+                float Dist = Math->Vector_Distance(BotPos, bot->TargetDropZone);
+                auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetDropZone);
+
+                bot->PC->SetControlRotation(TestRot);
+                bot->PC->K2_SetActorRotation(TestRot, true);
+
+                bot->PC->MoveToLocation(bot->TargetDropZone, 200.f, true, false, false, true, nullptr, true);
             }
         }
     }
@@ -1111,66 +1239,9 @@ namespace PlayerBots {
                     bot->PC->ThankBusDriver();
                 }
             }
-            else if (bot->BotState == EBotState::Bus) {
-                bot->Pawn->SetShield(0);
-                if (!bot->bHasThankedBusDriver && UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.0005f))
-                {
-                    bot->bHasThankedBusDriver = true;
-                    bot->PC->ThankBusDriver();
-                }
-
-                if (UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.002f)) {
-                    if (!bot->bHasThankedBusDriver && UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.5f)) {
-                        bot->bHasThankedBusDriver = true;
-                        bot->PC->ThankBusDriver();
-                    }
-                    bot->Pawn->K2_TeleportTo(GameState->GetAircraft(0)->K2_GetActorLocation(), {});
-                    bot->Pawn->BeginSkydiving(true);
-                    bot->BotState = EBotState::Skydiving;
-                }
-            }
-            else if (bot->BotState == EBotState::Skydiving) {
-                if (!bot->Pawn->bIsSkydiving) {
-                    bot->BotState = EBotState::Gliding;
-                }
-                
-                auto BotPos = bot->Pawn->K2_GetActorLocation();
-                if (bot->TargetLootable) {
-                    auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
-
-                    bot->PC->SetControlRotation(TestRot);
-                    bot->PC->K2_SetActorRotation(TestRot, true);
-                    bot->LookAt(bot->TargetLootable);
-
-                    bot->PC->MoveToActor(bot->TargetLootable, 0.f, true, false, true, nullptr, true);
-
-                    // Dont know a better way to skydive
-                    bot->Pawn->AddMovementInput(UKismetMathLibrary::GetDefaultObj()->NegateVector(bot->Pawn->GetActorUpVector()), 1, true);
-                    //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.2f, true);
-                }
-            }
-            else if (bot->BotState == EBotState::Gliding) {
-                if (bot->Pawn->bIsSkydiving) {
-                    bot->BotState = EBotState::Skydiving;
-                }
-
-                FVector Vel = bot->Pawn->GetVelocity();
-                float Speed = Vel.Z;
-                if (Speed == 0.f) {
-                    bot->BotState = EBotState::Landed;
-                }
-
-                if (bot->TargetLootable) {
-                    auto BotPos = bot->Pawn->K2_GetActorLocation();
-                    auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
-
-                    bot->PC->SetControlRotation(TestRot);
-                    bot->PC->K2_SetActorRotation(TestRot, true);
-                    bot->LookAt(bot->TargetLootable);
-
-                    bot->PC->MoveToActor(bot->TargetLootable, 0.f, true, false, true, nullptr, true);
-                    //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.2f, true);
-                }
+            else if (bot->BotState == EBotState::Bus || bot->BotState == EBotState::Skydiving || bot->BotState == EBotState::Gliding) {
+                BotsBTService_AIDropZone DropZoneEv;
+                DropZoneEv.Tick(bot);
             }
             else if (bot->BotState == EBotState::Landed) {
                 FVector BotLoc = bot->Pawn->K2_GetActorLocation();

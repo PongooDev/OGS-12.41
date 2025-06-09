@@ -105,6 +105,9 @@
     <ClInclude Include="SDK\SDK\AIModule_parameters.hpp">
       <Filter>SDK\SDK</Filter>
     </ClInclude>
+    <ClInclude Include="POI_Locs.h">
+      <Filter>Resources\AI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

@@ -383,13 +383,8 @@ namespace GameMode {
 			static auto Name3 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsInBus"));
 			PlayerBot->PC->Blackboard->SetValueAsBool(Name3, true);
 			PlayerBot->PC->Blackboard->SetValueAsEnum(Name4, (uint8)EExecutionStatus::ExecutionAllowed);
-		}
 
-		if (Globals::bBotsEnabled) {
-			for (size_t i = 0; i < PlayerBotArray.size(); i++)
-			{
-				PlayerBotArray[i]->BotState = EBotState::PreBus; // Proper!
-			}
+			PlayerBot->BotState = EBotState::PreBus; // Proper!
 		}
 
 		return StartAircraftPhaseOG(GameMode, a2);
@@ -401,14 +396,16 @@ namespace GameMode {
 		Log("OnAircraftExitedDropZone!");
 
 		if (Globals::bBotsEnabled) { // kick all bots out of the bus
-			for (size_t i = 0; i < PlayerBotArray.size(); i++)
-			{
-				AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
+			/*for (auto PlayerBot : PlayerBotArray) {
+				if (PlayerBot->BotState == EBotState::Bus) {
+					AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
-				PlayerBotArray[i]->Pawn->K2_TeleportTo(GameState->GetAircraft(0)->K2_GetActorLocation(), {});
-				PlayerBotArray[i]->Pawn->BeginSkydiving(true);
-				PlayerBotArray[i]->BotState = EBotState::Skydiving;
-			}
+					PlayerBot->Pawn->K2_TeleportTo(GameState->GetAircraft(0)->K2_GetActorLocation(), {});
+					PlayerBot->Pawn->BeginSkydiving(true);
+					PlayerBot->BotState = EBotState::Skydiving;
+					Log("Kicked a bot!");
+				}
+			}*/
 		}
 
 		if (Globals::bEventEnabled)
@@ -445,13 +442,8 @@ namespace GameMode {
 			static auto Name9 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsInBus"));
 
 			PlayerBot->PC->Blackboard->SetValueAsBool(Name9, true);
-		}
 
-		if (Globals::bBotsEnabled) {
-			for (size_t i = 0; i < PlayerBotArray.size(); i++)
-			{
-				PlayerBotArray[i]->BotState = EBotState::Bus;
-			}
+			PlayerBot->BotState = EBotState::Bus;
 		}
 
 		return OnAircraftEnteredDropZoneOG(a1);
