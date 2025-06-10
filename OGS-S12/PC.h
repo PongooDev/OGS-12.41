@@ -611,6 +611,10 @@ namespace PC {
 		if (!PC || !EmoteAsset)
 			return;
 
+		if (GameState->GamePhase == EAthenaGamePhase::Aircraft) {
+			return;
+		}
+
 		UClass* DanceAbility = StaticLoadObject<UClass>("/Game/Abilities/Emotes/GAB_Emote_Generic.GAB_Emote_Generic_C");
 		UClass* SprayAbility = StaticLoadObject<UClass>("/Game/Abilities/Sprays/GAB_Spray_Generic.GAB_Spray_Generic_C");
 

@@ -344,6 +344,8 @@ namespace GameMode {
 		Pawn->ForceNetUpdate();
 		PC->ForceNetUpdate();
 
+		ApplyCharacterCustomization(PlayerState, Pawn);
+
 		return Pawn;
 		//return (AFortPlayerPawnAthena*)GameMode->SpawnDefaultPawnAtTransform(Player, Transform);
 	}
