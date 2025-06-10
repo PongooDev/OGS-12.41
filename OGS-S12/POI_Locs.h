@@ -83,6 +83,8 @@ std::vector<FVector> DropZoneLocations = {
 
     { -68550, 80804, 69 }, // Catty Corner
 
+    { -92971, 78709, 69 }, // Mountain henchmen base
+
     { -39867, 91323, 69 }, // Retail Row
     { -38750, 102176, 69 },
 
