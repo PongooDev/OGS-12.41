@@ -5,8 +5,10 @@ struct LocRot {
 	FVector Location;
 	FRotator Rotation;
 };
-TArray<LocRot> PhantomBoothSpawners;
+/*TArray<LocRot> PhantomBoothSpawners;
 TArray<AActor*> PhantomBoothActors;
+
+UClass* PhantomBoothClass;*/
 
 namespace Net {
 	enum class ENetMode
@@ -45,6 +47,8 @@ namespace Net {
 		/*if (Name.contains("Phantom")) {
 			TArray<AActor*> PhantomBooths;
 			auto BoothClass = a1->Class;
+			PhantomBoothClass = BoothClass;
+			Log(BoothClass->GetFullName());
 			if (BoothClass) {
 				TArray<AActor*> FoundBooths;
 				auto* Statics = (UGameplayStatics*)UGameplayStatics::StaticClass()->DefaultObject;
@@ -68,6 +72,11 @@ namespace Net {
 						Log("Pitch: " + std::to_string(locRot.Rotation.Pitch));
 						Log("Yaw: " + std::to_string(locRot.Rotation.Yaw));
 						Log("Roll: " + std::to_string(locRot.Rotation.Roll));
+
+						FGameplayTag* Tag = (FGameplayTag*)((uintptr_t)Booth + 0xB0);
+						FName TagName = Tag->TagName;
+						Log(TagName.ToString());
+
 						PhantomBoothSpawners.Add(locRot);
 					}
 

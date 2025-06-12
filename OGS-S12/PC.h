@@ -309,7 +309,7 @@ namespace PC {
 
 		ServerAttemptInteractOG(Comp, ReceivingActor, InteractComponent, InteractType, OptionalData, InteractionBeingAttempted);
 
-		//std::cout << "ReceivingActor: " << ReceivingActor->GetFullName() << '\n';
+		Log("ServerAttemptInteract: " + ReceivingActor->GetName());
 
 		AFortPlayerControllerAthena* PC = Cast<AFortPlayerControllerAthena>(Comp->GetOwner());
 		if (!PC) {
