@@ -153,6 +153,7 @@
     <ClInclude Include="Misc.h" />
     <ClInclude Include="Net.h" />
     <ClInclude Include="PC.h" />
+    <ClInclude Include="PhantomBoothSpawner.h" />
     <ClInclude Include="PlayerBots.h" />
     <ClInclude Include="POI_Locs.h" />
     <ClInclude Include="Quests.h" />

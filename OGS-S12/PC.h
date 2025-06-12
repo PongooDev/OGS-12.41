@@ -6,6 +6,8 @@
 #include "Quests.h"
 #include "PlayerBots.h"
 
+#include "PhantomBoothSpawner.h"
+
 namespace PC {
 	// The accolades i need to do (there is way too many accolades so these are just the main ones i want completed)
 	// TODO: Teamscore Accolades (029, 030, 031)
@@ -47,6 +49,10 @@ namespace PC {
 			Looting::SpawnLlamas();
 
 			Vehicles::SpawnVehicles();
+
+			if (true) {
+				PhantomBoothSpawner::SpawnBooths();
+			}
 		}
 
 		return ServerReadyToStartMatchOG(PC);
@@ -800,6 +806,17 @@ namespace PC {
 			Log("X: " + std::to_string(Loc.X));
 			Log("Y: " + std::to_string(Loc.Y));
 			Log("Z: " + std::to_string(Loc.Z));
+		}
+		else if (Command.contains("Teleport ")) {
+			std::vector<std::string> args = TextManipUtils::SplitWhitespace(Command);
+			FVector TeleportLoc = FVector();
+
+			TeleportLoc.X = std::stoi(args[1]);
+			TeleportLoc.Y = std::stoi(args[2]);
+			TeleportLoc.Z = std::stoi(args[3]);
+
+			PC->Pawn->K2_TeleportTo(TeleportLoc, PC->Pawn->K2_GetActorRotation());
+			Log("Teleported: X: " + args[1] + " Y: " + args[2] + " Z: " + args[3]);
 		}
 	}
 

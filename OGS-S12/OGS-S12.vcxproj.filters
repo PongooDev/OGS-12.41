@@ -25,6 +25,9 @@
     <Filter Include="Resources\AI">
       <UniqueIdentifier>{f67b8e8a-e274-4eb4-a006-120a08f05dc6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resources\ObjectSpawners">
+      <UniqueIdentifier>{b205649c-a632-4edc-aff2-0036cb9c514a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -107,6 +110,9 @@
     </ClInclude>
     <ClInclude Include="POI_Locs.h">
       <Filter>Resources\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="PhantomBoothSpawner.h">
+      <Filter>Resources\ObjectSpawners</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

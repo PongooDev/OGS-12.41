@@ -4,6 +4,7 @@
 #include "Abilities.h"
 #include "Bots.h"
 #include "Quests.h"
+#include "Net.h"
 
 namespace GameMode {
 	namespace Event {
@@ -98,6 +99,7 @@ namespace GameMode {
 
 				GameState->WorldLevel = Playlist->LootLevel;
 				GameMode->AISettings = Playlist->AISettings;
+				GameMode->bSpawnAllStuff = true;
 
 				if (Globals::bEventEnabled) {
 					Log("Event is loaded!");
@@ -139,7 +141,10 @@ namespace GameMode {
 				}
 				else if (auto BotManager = (UFortServerBotManagerAthena*)UGameplayStatics::SpawnObject(UFortServerBotManagerAthena::StaticClass(), GameMode))
 				{
+					InitialisedBots = true;
+
 					GameMode->ServerBotManager = BotManager;
+					GameMode->ServerBotManagerClass = UFortServerBotManagerAthena::StaticClass();
 					BotManager->CachedGameState = GameState;
 					BotManager->CachedGameMode = GameMode;
 
@@ -148,14 +153,31 @@ namespace GameMode {
 					BotMutator->CachedGameMode = GameMode;
 					BotMutator->CachedGameState = GameState;
 
-					AAthenaAIDirector* Director = SpawnActor<AAthenaAIDirector>({});
-					GameMode->AIDirector = Director;
-					//Director->Activate();
+					if (!GameMode->AIDirector) {
+						Log("No AIDirector, Creating one automatically...");
+						AAthenaAIDirector* Director = SpawnActor<AAthenaAIDirector>({});
+						GameMode->AIDirector = Director;
+					}
+
+					if (GameMode->AIDirector) {
+						GameMode->AIDirector->Activate();
+					}
+					else {
+						Log("AIDirector still doesent exist!");
+					}
 
 					AFortAIGoalManager* GoalManager = SpawnActor<AFortAIGoalManager>({});
 					GameMode->AIGoalManager = GoalManager;
 
-					InitialisedBots = true;
+					if (Globals::bBotsEnabled) {
+						CIDs = GetAllObjectsOfClass<UAthenaCharacterItemDefinition>();
+						Pickaxes = GetAllObjectsOfClass<UAthenaPickaxeItemDefinition>();
+						Backpacks = GetAllObjectsOfClass<UAthenaBackpackItemDefinition>();
+						Gliders = GetAllObjectsOfClass<UAthenaGliderItemDefinition>();
+						Contrails = GetAllObjectsOfClass<UAthenaSkyDiveContrailItemDefinition>();
+						Dances = GetAllObjectsOfClass<UAthenaDanceItemDefinition>();
+					}
+
 					Log("Initialised Bots!");
 				}
 				else
@@ -166,15 +188,6 @@ namespace GameMode {
 
 			if (!ServerListening) {
 				ServerListening = true;
-
-				if (Globals::bBotsEnabled) {
-					CIDs = GetAllObjectsOfClass<UAthenaCharacterItemDefinition>();
-					Pickaxes = GetAllObjectsOfClass<UAthenaPickaxeItemDefinition>();
-					Backpacks = GetAllObjectsOfClass<UAthenaBackpackItemDefinition>();
-					Gliders = GetAllObjectsOfClass<UAthenaGliderItemDefinition>();
-					Contrails = GetAllObjectsOfClass<UAthenaSkyDiveContrailItemDefinition>();
-					Dances = GetAllObjectsOfClass<UAthenaDanceItemDefinition>();
-				}
 
 				if (Globals::bEventEnabled) {
 					Event::Starter = StaticLoadObject<UClass>("/CycloneJerky/Gameplay/BP_Jerky_Scripting.BP_Jerky_Scripting_C");
@@ -213,6 +226,7 @@ namespace GameMode {
 				}
 				GameState->OnRep_AdditionalPlaylistLevelsStreamed();
 				GameState->OnFinishedStreamingAdditionalPlaylistLevel();
+				GameMode->HandleAllPlaylistLevelsVisible();
 
 				FName NetDriverDef = UKismetStringLibrary::Conv_StringToName(FString(L"GameNetDriver"));
 
