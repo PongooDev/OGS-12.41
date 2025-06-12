@@ -123,6 +123,75 @@ void HookVTable(void* Base, int Idx, void* Detour, void** OG)
 	VirtualProtect(&VTable[Idx], sizeof(void*), oldProtection, NULL);
 }
 
+// pasted shit from ploosh wow
+template <typename T = void*>
+__forceinline static void ExecHook(UFunction* func, void* detour, T& og = nullptr)
+{
+	if (!func)
+		return;
+	if (!std::is_same_v<T, void*>)
+		og = (T)func->ExecFunction;
+
+	func->ExecFunction = reinterpret_cast<UFunction::FNativeFuncPtr>(detour);
+}
+
+class FOutputDevice
+{
+public:
+	bool bSuppressEventTag;
+	bool bAutoEmitLineTerminator;
+	uint8_t _Padding1[0x6];
+};
+
+class FFrame : public FOutputDevice
+{
+public:
+	void** VTable;
+	UFunction* Node;
+	UObject* Object;
+	uint8* Code;
+	uint8* Locals;
+	void* MostRecentProperty;
+	uint8_t* MostRecentPropertyAddress;
+	uint8_t _Padding1[0x40];
+	FField* PropertyChainForCompiledIn;
+
+public:
+	void StepCompiledIn(void* const Result, bool ForceExplicitProp = false)
+	{
+		if (Code && !ForceExplicitProp)
+		{
+			((void (*)(FFrame*, UObject*, void* const))(ImageBase + 0x2E1DD00))(this, Object, Result);
+		}
+		else
+		{
+			FField* _Prop = PropertyChainForCompiledIn;
+			PropertyChainForCompiledIn = _Prop->Next;
+			((void (*)(FFrame*, void* const, FField*))(ImageBase + 0x2E1DD30))(this, Result, _Prop);
+		}
+	}
+
+	template <typename T>
+	T& StepCompiledInRef()
+	{
+		T TempVal{};
+		MostRecentPropertyAddress = nullptr;
+
+		if (Code)
+		{
+			((void (*)(FFrame*, UObject*, void* const))(ImageBase + 0x2E1DD00))(this, Object, &TempVal);
+		}
+		else
+		{
+			FField* _Prop = PropertyChainForCompiledIn;
+			PropertyChainForCompiledIn = _Prop->Next;
+			((void (*)(FFrame*, void* const, FField*))(ImageBase + 0x2E1DD30))(this, &TempVal, _Prop);
+		}
+
+		return MostRecentPropertyAddress ? *(T*)MostRecentPropertyAddress : TempVal;
+	}
+};
+
 inline FQuat RotatorToQuat(FRotator Rotation)
 {
 	FQuat Quat;

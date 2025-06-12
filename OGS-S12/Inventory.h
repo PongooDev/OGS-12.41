@@ -149,6 +149,12 @@ namespace Inventory {
 		}
 	}
 
+	template <typename _It>
+	static _It* GetInterface(UObject* Object)
+	{
+		return ((_It * (*)(UObject*, UClass*)) (ImageBase + 0x2E0D910))(Object, _It::StaticClass());
+	}
+
 	inline void GiveItem(AFortPlayerController* PC, UFortItemDefinition* Def, int Count, int LoadedAmmo)
 	{
 
@@ -159,9 +165,12 @@ namespace Inventory {
 
 		PC->WorldInventory->Inventory.ReplicatedEntries.Add(Item->ItemEntry);
 		PC->WorldInventory->Inventory.ItemInstances.Add(Item);
+
+		if (auto Gadget = Cast<UFortGadgetItemDefinition>(Def))
+			((bool(*)(UFortGadgetItemDefinition*, IInterface*, UFortWorldItem*, uint8)) (ImageBase + 0x1CFC810))(Gadget, GetInterface<IFortInventoryOwnerInterface>(PC), Item, 1);
+
 		PC->WorldInventory->Inventory.MarkItemDirty(Item->ItemEntry);
 		PC->WorldInventory->HandleInventoryLocalUpdate();
-
 	}
 
 	void UpdateStack(AFortPlayerController* PC, bool Update, FFortItemEntry* EntryToUpdate = nullptr)
@@ -273,6 +282,8 @@ namespace Inventory {
 			{
 				if (PC->WorldInventory->Inventory.ItemInstances[i]->GetItemGuid() == guid)
 				{
+					if (auto Gadget = Cast<UFortGadgetItemDefinition>(PC->WorldInventory->Inventory.ItemInstances[i]->ItemEntry.ItemDefinition))
+						((bool(*)(UFortGadgetItemDefinition*, IInterface*, UFortWorldItem*)) (ImageBase + 0x1CFC8D0))(Gadget, GetInterface<IFortInventoryOwnerInterface>(PC), PC->WorldInventory->Inventory.ItemInstances[i]);
 					PC->WorldInventory->Inventory.ItemInstances.RemoveSingle(i);
 					break;
 				}
@@ -649,6 +660,63 @@ namespace Inventory {
 		return NetMulticastDamageCuesOG(Pawn, SharedData, NonSharedData);
 	}
 
+	static inline void (*GiveItemToInventoryOwnerOG)(UObject* Object, FFrame& Stack);
+	static void GiveItemToInventoryOwner(UObject* Object, FFrame& Stack) {
+		TScriptInterface<class IFortInventoryOwnerInterface> InventoryOwner;
+		UFortWorldItemDefinition* ItemDefinition;
+		int32 NumberToGive;
+		bool bNotifyPlayer;
+		int32 ItemLevel;
+		int32 PickupInstigatorHandle;
+		Stack.StepCompiledIn(&InventoryOwner);
+		Stack.StepCompiledIn(&ItemDefinition);
+		Stack.StepCompiledIn(&NumberToGive);
+		Stack.StepCompiledIn(&bNotifyPlayer);
+		Stack.StepCompiledIn(&ItemLevel);
+		Stack.StepCompiledIn(&PickupInstigatorHandle);
+
+		Log("Well well well!");
+
+		auto PC = (AFortPlayerControllerAthena*)InventoryOwner.ObjectPointer;
+		GiveItem(PC, ItemDefinition, 1, 1);
+		return GiveItemToInventoryOwnerOG(Object, Stack);
+	}
+
+	bool ServerRemoveInventoryItem(AFortPlayerControllerAthena* PlayerController, FGuid ItemGuid, int Count, bool bForceRemoval, bool bForcePersistWhenEmpty)
+	{
+		Log("ServerRemoveInventoryItem!");
+		RemoveItem(PlayerController, ItemGuid, Count);
+
+		return true;
+	}
+
+	static inline int32(*K2_RemoveItemFromPlayerOG)(AFortPlayerControllerAthena* PC, UFortWorldItemDefinition* ItemDefinition, int32 AmountToRemove, bool bForceRemoval);
+	static int32 K2_RemoveItemFromPlayer(AFortPlayerControllerAthena* PC, UFortWorldItemDefinition* ItemDefinition, int32 AmountToRemove, bool bForceRemoval) {
+		Log("K2_RemoveItemFromPlayer!");
+		RemoveItem(PC, ItemDefinition, INT_MAX);
+		return AmountToRemove;
+	}
+
+	static inline int32(*K2_RemoveItemFromPlayerByGuidOG)(UObject* Object, FFrame& Stack, int32* Ret);
+	int32 K2_RemoveItemFromPlayerByGuid(UObject* Context, FFrame& Stack, int32* Ret)
+	{
+		class AFortPlayerControllerAthena* PlayerController;
+		struct FGuid ItemGuid;
+		int32 AmountToRemove;
+		bool bForceRemoval;
+		Stack.StepCompiledIn(&PlayerController);
+		Stack.StepCompiledIn(&ItemGuid);
+		Stack.StepCompiledIn(&AmountToRemove);
+		Stack.StepCompiledIn(&bForceRemoval);
+
+		auto RemoveCount = AmountToRemove - 1;
+
+		Log("wow wow wow!");
+		RemoveItem(PlayerController, ItemGuid, 1);
+
+		return RemoveCount;
+	}
+
 	void Hook() {
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x20D, ServerExecuteInventoryItem, nullptr);
 
@@ -659,6 +727,14 @@ namespace Inventory {
 		HookVTable(AFortPlayerPawnAthena::GetDefaultObj(), 0x119, NetMulticastDamageCues, (LPVOID*)&NetMulticastDamageCuesOG);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x260C490), OnReload, (LPVOID*)&OnReloadOG);
+
+		ExecHook(StaticLoadObject<UFunction>("/Script/FortniteGame.FortKismetLibrary.GiveItemToInventoryOwner"), GiveItemToInventoryOwner, GiveItemToInventoryOwnerOG);
+
+		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x209, ServerRemoveInventoryItem, nullptr);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x1E69600), K2_RemoveItemFromPlayer, nullptr);
+
+		ExecHook(StaticLoadObject<UFunction>("/Script/FortniteGame.FortKismetLibrary.K2_RemoveItemFromPlayerByGuid"), K2_RemoveItemFromPlayerByGuid, K2_RemoveItemFromPlayerByGuidOG);
 
 		Log("Inventory Hooked!");
 	}

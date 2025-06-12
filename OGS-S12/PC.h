@@ -315,6 +315,7 @@ namespace PC {
 		if (!PC) {
 			return ServerAttemptInteractOG(Comp, ReceivingActor, InteractComponent, InteractType, OptionalData, InteractionBeingAttempted);
 		}
+
 		static UClass* AthenaQuestBGAClass = StaticLoadObject<UClass>("/Game/Athena/Items/QuestInteractablesV2/Parents/AthenaQuest_BGA.AthenaQuest_BGA_C");
 		static std::map<AFortPlayerControllerAthena*, int> ChestsSearched{};
 
