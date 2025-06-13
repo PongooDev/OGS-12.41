@@ -175,15 +175,31 @@ namespace Bots {
 				}
 			}
 		}
+
 		if (KilledBot && InstigatedBy && InstigatedBy->PlayerState && !InstigatedBy->PlayerState->bIsABot) {
+			std::string DisguiseName;
+			AFortPlayerControllerAthena* PlayerController = (AFortPlayerControllerAthena*)InstigatedBy;
+			if (PlayerController && PlayerController->WorldInventory && PlayerController->WorldInventory->Inventory.ReplicatedEntries) {
+				for (size_t i = 0; i < PlayerController->WorldInventory->Inventory.ReplicatedEntries.Num(); i++)
+				{
+					auto& Entry = PlayerController->WorldInventory->Inventory.ReplicatedEntries[i];
+					if (Entry.ItemDefinition) {
+						std::string ItemName = Entry.ItemDefinition->Name.ToString();
+						if (ItemName.contains("Disguise")) {
+							DisguiseName = ItemName;
+						}
+					}
+				}
+			}
+
 			Log(KilledBot->Name);
 			if (KilledBot->Name.contains("POI")) {
 				Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_078_ElimBoss.AccoladeId_078_ElimBoss"));
 			}
-			else if (KilledBot->Name.contains("Ego")) {
+			else if (KilledBot->Name.contains("Ego") && DisguiseName.contains("Alter")) {
 				Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_081_ElimGhost.AccoladeId_081_ElimGhost"));
 			}
-			else if (KilledBot->Name.contains("Alter")) {
+			else if (KilledBot->Name.contains("Alter") && DisguiseName.contains("Ego")) {
 				Quests::GiveAccolade((AFortPlayerControllerAthena*)InstigatedBy, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_082_ElimShadow.AccoladeId_082_ElimShadow"));
 			}
 			else {
@@ -251,10 +267,34 @@ namespace Bots {
 	{
 		if (SourceActor->IsA(AFortPlayerPawnAthena::StaticClass()))
 		{
+			std::string DisguiseName;
+			AFortPlayerController* PlayerController = Cast<AFortPlayerController>(SourceActor->GetOwner());
+			if (PlayerController && PlayerController->WorldInventory && PlayerController->WorldInventory->Inventory.ReplicatedEntries) {
+				for (size_t i = 0; i < PlayerController->WorldInventory->Inventory.ReplicatedEntries.Num(); i++)
+				{
+					auto& Entry = PlayerController->WorldInventory->Inventory.ReplicatedEntries[i];
+					if (Entry.ItemDefinition) {
+						std::string ItemName = Entry.ItemDefinition->Name.ToString();
+						if (ItemName.contains("Disguise")) {
+							DisguiseName = ItemName;
+						}
+					}
+				}
+			}
+
 			for (auto bot : FactionBots)
 			{
 				if (bot->PC == PC)
 				{
+					if (!DisguiseName.empty()) {
+						Log(bot->Name);
+						if (bot->Name.contains("Ego") && DisguiseName.contains("Ego")) {
+							return nullptr;
+						}
+						else if (bot->Name.contains("Alter") && DisguiseName.contains("Alter")) {
+							return nullptr;
+						}
+					}
 					bot->OnPerceptionSensed(SourceActor, Stimulus);
 				}
 			}

@@ -499,11 +499,12 @@ namespace PC {
 		}
 		else if (ReceivingActor->IsA(ABGA_Athena_Keycard_Lock_Parent_C::StaticClass()))
 		{
-			UFortItemDefinition* Def = *(UFortItemDefinition**)(__int64(ReceivingActor) + 0x8F0);// this took long to find
+			// Commented because K2_RemoveItemFromPlayer should remove
+			/*UFortItemDefinition* Def = *(UFortItemDefinition**)(__int64(ReceivingActor) + 0x8F0);// this took long to find
 			if (Inventory::FindItemEntry(PC, Def)) {
 				Inventory::RemoveItem(PC, Def, 1);
-				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_079_OpenVault.AccoladeId_079_OpenVault"));
-			}
+			}*/
+			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_079_OpenVault.AccoladeId_079_OpenVault"));
 		}
 	}
 

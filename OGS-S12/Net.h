@@ -88,10 +88,6 @@ namespace Net {
 			}
 		}*/
 
-		a1->bAutoDestroyWhenFinished = false;
-		a1->bNetTemporary = false;
-		a1->bActorIsBeingDestroyed = false;
-
 		//Log(Name);
 
 		ENetMode OriginalNetMode = AActorGetNetModeOG(a1);

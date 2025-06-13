@@ -197,9 +197,9 @@ namespace GameMode {
 				GameState->OnRep_CurrentPlaylistId();
 				GameState->OnRep_CurrentPlaylistInfo();
 
-				UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_001"), true, true, FLatentActionInfo());
-				UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_FT_a"), true, true, FLatentActionInfo());
-				UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_FT_b"), true, true, FLatentActionInfo());
+				//UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_001"), true, true, FLatentActionInfo());
+				//UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_FT_a"), true, true, FLatentActionInfo());
+				//UGameplayStatics::LoadStreamLevel(UWorld::GetWorld(), UKismetStringLibrary::Conv_StringToName(L"LF_Athena_POI_25x25_Agency_FT_b"), true, true, FLatentActionInfo());
 
 				for (int i = 0; i < GameState->CurrentPlaylistInfo.BasePlaylist->AdditionalLevels.Num(); i++)
 				{
