@@ -11,5 +11,5 @@ namespace Globals {
 	bool bBotsEnabled = true;
 
 	int MaxBotsToSpawn = 100;
-	int MinPlayersForEarlyStart = 100;
+	int MinPlayersForEarlyStart = 1;
 }
