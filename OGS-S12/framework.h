@@ -335,6 +335,15 @@ AActor* DuplicateActor(AActor* Original)
 		//Duplicated->Tags.Add(DupedTag);
 	}
 
+	FGameplayTag* OriginalFactionTag = (FGameplayTag*)((uintptr_t)Original + 0xB0);
+	FGameplayTag* DuplicateFactionTag = (FGameplayTag*)((uintptr_t)Duplicated + 0xB0);
+
+	if (OriginalFactionTag && DuplicateFactionTag)
+	{
+		//Log(OriginalFactionTag->TagName.ToString());
+		*DuplicateFactionTag = *OriginalFactionTag;
+	}
+
 	return Duplicated;
 }
 

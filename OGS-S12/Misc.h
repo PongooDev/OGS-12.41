@@ -30,7 +30,7 @@ namespace Misc {
         AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
         std::string Name = This->GetName();
-        Log(Name);
+        //Log(Name);
 
         if (GameState->GamePhase <= EAthenaGamePhase::Warmup) {
             if (Name.contains("BGA")) {
