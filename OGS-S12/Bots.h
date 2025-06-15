@@ -5,36 +5,6 @@
 #include "Bosses.h"
 #include "PlayerBots.h"
 
-namespace EBTExecutionMode
-{
-	enum Type
-	{
-		SingleRun,
-		Looped,
-	};
-}
-
-namespace EBTActiveNode
-{
-	enum Type
-	{
-		Composite,
-		ActiveTask,
-		AbortingTask,
-		InactiveTask,
-	};
-}
-
-namespace EBTTaskStatus
-{
-	enum Type
-	{
-		Active,
-		Aborting,
-		Inactive,
-	};
-}
-
 namespace Bots {
 	void StartTree(UBehaviorTreeComponent* BTComp, UBehaviorTree* BTAsset, EBTExecutionMode::Type Mode = EBTExecutionMode::Looped)
 	{

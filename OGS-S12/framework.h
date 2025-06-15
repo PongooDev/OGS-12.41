@@ -525,3 +525,33 @@ inline UFortAccoladeItemDefinition* GetDefFromEvent(EAccoladeEvent Event, int Co
 
 	return Def;
 }
+
+namespace EBTExecutionMode
+{
+	enum Type
+	{
+		SingleRun,
+		Looped,
+	};
+}
+
+namespace EBTActiveNode
+{
+	enum Type
+	{
+		Composite,
+		ActiveTask,
+		AbortingTask,
+		InactiveTask,
+	};
+}
+
+namespace EBTTaskStatus
+{
+	enum Type
+	{
+		Active,
+		Aborting,
+		Inactive,
+	};
+}
