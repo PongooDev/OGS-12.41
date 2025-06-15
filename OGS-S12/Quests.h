@@ -198,10 +198,10 @@ namespace Quests {
 									return ProgressQuest(PC, QuestDefinition, ObjectiveInfo.BackendName);
 								}
 								else {
-									for (int i = 0; i < Row->TargetTagContainer.GameplayTags.Num(); i++) {
+									/*for (int i = 0; i < Row->TargetTagContainer.GameplayTags.Num(); i++) {
 										Log(std::to_string(i));
 										Log(Row->TargetTagContainer.GameplayTags[i].TagName.ToString());
-									}
+									}*/
 								}
 							}
 							//break;

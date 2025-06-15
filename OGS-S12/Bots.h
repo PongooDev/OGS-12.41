@@ -133,6 +133,12 @@ namespace Bots {
 		PC->PathFollowingComponent->Activate(false);
 		PC->PathFollowingComponent->SetActive(true, false);
 		PC->PathFollowingComponent->OnRep_IsActive();
+		if (((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData) {
+			Log("NavData!");
+		}
+		else {
+			Log("No NavData!");
+		}
 
 		Ret->Mesh->AnimBlueprintGeneratedClass = StaticLoadObject<UClass>("/Game/Athena/AI/MANG/AnimSet/MANG_PatrolLayerAnimBP.MANG_PatrolLayerAnimBP_C");
 		Ret->OnRep_AnimBPOverride();

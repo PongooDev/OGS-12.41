@@ -1285,6 +1285,12 @@ namespace PlayerBots {
 
         bot->PC->PathFollowingComponent->MyNavData = ((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData;
         bot->PC->PathFollowingComponent->OnNavDataRegistered(((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData);
+        if (((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData) {
+            Log("NavData!");
+        }
+        else {
+            Log("No NavData!");
+        }
 
         bot->PlayerState->OnRep_CharacterData();
 

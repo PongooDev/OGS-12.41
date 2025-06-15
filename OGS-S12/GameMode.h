@@ -157,13 +157,7 @@ namespace GameMode {
 						Log("No AIDirector, Creating one automatically...");
 						AAthenaAIDirector* Director = SpawnActor<AAthenaAIDirector>({});
 						GameMode->AIDirector = Director;
-					}
-
-					if (GameMode->AIDirector) {
 						GameMode->AIDirector->Activate();
-					}
-					else {
-						Log("AIDirector still doesent exist!");
 					}
 
 					AFortAIGoalManager* GoalManager = SpawnActor<AFortAIGoalManager>({});
