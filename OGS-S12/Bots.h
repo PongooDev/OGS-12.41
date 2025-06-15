@@ -5,7 +5,102 @@
 #include "Bosses.h"
 #include "PlayerBots.h"
 
+namespace EBTExecutionMode
+{
+	enum Type
+	{
+		SingleRun,
+		Looped,
+	};
+}
+
+namespace EBTActiveNode
+{
+	enum Type
+	{
+		Composite,
+		ActiveTask,
+		AbortingTask,
+		InactiveTask,
+	};
+}
+
+namespace EBTTaskStatus
+{
+	enum Type
+	{
+		Active,
+		Aborting,
+		Inactive,
+	};
+}
+
 namespace Bots {
+	void StartTree(UBehaviorTreeComponent* BTComp, UBehaviorTree* BTAsset, EBTExecutionMode::Type Mode = EBTExecutionMode::Looped)
+	{
+		if (!BTComp)
+		{
+			Log("StartTree: Unable to run NULL BTComp");
+			return;
+		}
+
+		BTComp->DefaultBehaviorTreeAsset = BTAsset;
+
+		BTComp->StartLogic();
+		return;
+	}
+
+	// I have suspicion this is stripped so i will recreate it
+	bool RunBehaviorTree(AFortAthenaAIBotController* PC, UBehaviorTree* BTAsset)
+	{
+		// @todo: find BrainComponent and see if it's BehaviorTreeComponent
+		// Also check if BTAsset requires BlackBoardComponent, and if so 
+		// check if BB type is accepted by BTAsset.
+		// Spawn BehaviorTreeComponent if none present. 
+		// Spawn BlackBoardComponent if none present, but fail if one is present but is not of compatible class
+		if (BTAsset == NULL)
+		{
+			Log("RunBehaviorTree: Unable to run NULL behavior tree");
+			return false;
+		}
+
+		bool bSuccess = true;
+
+		// see if need a blackboard component at all
+		UBlackboardComponent* BlackboardComp = PC->Blackboard;
+		if (BTAsset->BlackboardAsset && PC->Blackboard == nullptr)
+		{
+			bSuccess = PC->UseBlackboard(BTAsset->BlackboardAsset, &BlackboardComp);
+		}
+
+		if (bSuccess)
+		{
+			UBehaviorTreeComponent* BTComp = Cast<UBehaviorTreeComponent>(PC->BrainComponent);
+			if (BTComp == NULL)
+			{
+				Log("RunBehaviorTree: spawning BehaviorTreeComponent..");
+
+				
+				BTComp = (UBehaviorTreeComponent*)((UGameplayStatics*)UGameplayStatics::StaticClass()->DefaultObject)->SpawnObject(UBehaviorTreeComponent::StaticClass(), PC);
+				RegisterComponentWithWorld(BTComp, UWorld::GetWorld());
+			}
+
+			// make sure BrainComponent points at the newly created BT component
+			PC->BrainComponent = BTComp;
+
+			//BTComp->StartTree(*BTAsset, EBTExecutionMode::Looped);
+			if (PC->RunBehaviorTree(BTAsset)) {
+				Log("BehaviourTree Ran Successfully!");
+			}
+			else {
+				Log("RunBehaviorTree returned false, manually running...");
+				StartTree(BTComp, BTAsset, EBTExecutionMode::Looped);
+			}
+		}
+
+		return bSuccess;
+	}
+
 	AFortPlayerPawnAthena* (*SpawnBotOG)(UFortServerBotManagerAthena* BotManager, FVector SpawnLoc, FRotator SpawnRot, UFortAthenaAIBotCustomizationData* BotData, FFortAthenaAIBotRunTimeCustomizationData RuntimeBotData);
 	AFortPlayerPawnAthena* SpawnBot(UFortServerBotManagerAthena* BotManager, FVector SpawnLoc, FRotator SpawnRot, UFortAthenaAIBotCustomizationData* BotData, FFortAthenaAIBotRunTimeCustomizationData RuntimeBotData)
 	{
@@ -107,6 +202,12 @@ namespace Bots {
 			}
 		}
 
+		PC->PathFollowingComponent->MyNavData = ((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData;
+		PC->PathFollowingComponent->OnNavDataRegistered(((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData);
+		PC->PathFollowingComponent->Activate(false);
+		PC->PathFollowingComponent->SetActive(true, false);
+		PC->PathFollowingComponent->OnRep_IsActive();
+
 		if (!PC->BrainComponent) {
 			PC->BrainComponent = (UBrainComponent*)UGameplayStatics::SpawnObject(UBrainComponent::StaticClass(), PC);
 			PC->BrainComponent->Activate(false);
@@ -117,10 +218,13 @@ namespace Bots {
 		PC->UseBlackboard(Blackboard, &PC->Blackboard);
 		PC->OnUsingBlackBoard(PC->Blackboard, Blackboard);
 
-		PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
-
 		PC->BehaviorTree = BehaviorTree;
-		PC->RunBehaviorTree(BehaviorTree);
+		if (RunBehaviorTree(PC, StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2"))) {
+			Log("Hi!");
+		}
+		else {
+			Log("Bye!");
+		}
 		PC->BlueprintOnBehaviorTreeStarted();
 
 		static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
@@ -128,26 +232,18 @@ namespace Bots {
 		PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
 		PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
 
-		PC->PathFollowingComponent->MyNavData = ((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData;
-		PC->PathFollowingComponent->OnNavDataRegistered(((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData);
-		PC->PathFollowingComponent->Activate(false);
-		PC->PathFollowingComponent->SetActive(true, false);
-		PC->PathFollowingComponent->OnRep_IsActive();
-		if (((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData) {
-			Log("NavData!");
-		}
-		else {
-			Log("No NavData!");
-		}
+		//PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
+		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_AvoidThreat_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
+		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Leash_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
+		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Patrolling_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
+		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_DynamicBlueprint_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
 
 		Ret->Mesh->AnimBlueprintGeneratedClass = StaticLoadObject<UClass>("/Game/Athena/AI/MANG/AnimSet/MANG_PatrolLayerAnimBP.MANG_PatrolLayerAnimBP_C");
 		Ret->OnRep_AnimBPOverride();
 
-		PC->Possess(Ret);
-		PC->RunBehaviorTree(BehaviorTree);
-		PC->BlueprintOnBehaviorTreeStarted();
-
 		PC->OnRep_Pawn();
+
+		PC->BrainComponent->RestartLogic();
 
 		return Ret;
 	}

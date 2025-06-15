@@ -192,6 +192,7 @@ namespace BossesBTService_Patrolling {
 		Log("Started Patrolling " + std::to_string(bot->MaxPatrolPoints) + " Patrol Points for bot: " + bot->Name);
 		bot->CurrentPatrolPointLoc = Loc;
 		bot->bIsPatrolling = true;
+
 		return Loc;
 	}
 
@@ -251,6 +252,7 @@ namespace BossesBTService_Patrolling {
 			}
 		}
 
+		bot->PC->Blackboard->SetValueAsVector(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Patrolling_Destination")), Loc);
 		return Loc;
 	}
 }
@@ -370,6 +372,7 @@ namespace Bosses {
 		auto block = [](FactionBot* bot, std::function<void(FactionBot* bot)> const& SetUnaware, bool Alerted, bool Threatened, bool LKP) {
 			BossesBTService_AIEvaluator Evaluator;
 			Evaluator.Tick(bot);
+			//return;
 
 			if (bot->CurrentAssignedDBNOBot && bot->CurrentAssignedDBNOBot->Pawn && bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO && !Threatened) {
 				FVector BotPos = bot->Pawn->K2_GetActorLocation();

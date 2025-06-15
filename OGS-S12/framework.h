@@ -50,6 +50,8 @@ static void* (*ApplyCharacterCustomization)(void* a1, void* a2) = decltype(Apply
 
 static void (*BotManagerSetup)(__int64 BotManaager, __int64 Pawn, __int64 BehaviorTree, __int64 a4, DWORD* SkillLevel, __int64 a7, __int64 StartupInventory, __int64 BotNameSettings, __int64 a10, BYTE* CanRespawnOnDeath, unsigned __int8 BitFieldDataThing, BYTE* CustomSquadId, FFortAthenaAIBotRunTimeCustomizationData InRuntimeBotData) = decltype(BotManagerSetup)(ImageBase + 0x19D93F0);
 
+static char(__fastcall* RegisterComponentWithWorld)(UObject* Component, UObject* World) = decltype(RegisterComponentWithWorld)(ImageBase + 0x3FF94E0);
+
 static void(*RemoveFromAlivePlayers)(AFortGameModeAthena*, AFortPlayerControllerAthena*, APlayerState*, AFortPlayerPawn*, UFortWeaponItemDefinition*, EDeathCause, char) = decltype(RemoveFromAlivePlayers)(ImageBase + 0x18ECBB0);
 static void (*AddToAlivePlayers)(AFortGameModeAthena* GameMode, AFortPlayerControllerAthena* Player) = decltype(AddToAlivePlayers)(ImageBase + 0x18c35b0);
 
