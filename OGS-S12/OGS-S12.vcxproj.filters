@@ -114,6 +114,9 @@
     <ClInclude Include="PhantomBoothSpawner.h">
       <Filter>Resources\ObjectSpawners</Filter>
     </ClInclude>
+    <ClInclude Include="Creative.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

@@ -75,16 +75,42 @@ namespace PC {
 		AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
 		auto Pawn = (AFortPlayerPawn*)PC->Pawn;
 
-		/*auto PhantomBooth = StaticLoadObject<UClass>("/Game/Athena/Items/EnvironmentalItems/HidingProps/Props/B_HidingProp_PhantomBooth.B_HidingProp_PhantomBooth_C");
-		if (PhantomBooth) {
-			Log("PhantomBooth Exists");
-			auto SpawnLoc = Pawn->K2_GetActorLocation() + Pawn->GetActorForwardVector() * 300.f;
-			auto SpawnRot = Pawn->K2_GetActorRotation();
-			AActor* SpawnedBooth = SpawnActor<AActor>(SpawnLoc, SpawnRot, nullptr, PhantomBooth);
+		if (PC && Globals::bCreativeEnabled)
+		{
+			Log("test");
+			auto State = (AFortPlayerStateAthena*)PC->PlayerState;
+			if (GameState->IsTeleportToCreativeHubAllowed(State))
+			{
+				auto PlayerStartTEST = GameMode->FindPlayerStart(PC, L"");
+
+				AActor* StartSpot = nullptr;
+				if (PlayerStartTEST)
+				{
+					StartSpot = PlayerStartTEST;
+				}
+				else
+				{
+					TArray<AActor*> StartSpotsC;
+					Statics->GetAllActorsOfClass(UWorld::GetWorld(), AFortPlayerStartCreative::StaticClass(), &StartSpotsC);
+
+					StartSpot = StartSpotsC[rand() % StartSpotsC.Num()];
+
+					StartSpotsC.Free();
+				}
+
+				if (StartSpot)
+				{
+					Log("StartSpot!");
+					PC->Pawn->K2_TeleportTo(StartSpot->K2_GetActorLocation(), StartSpot->K2_GetActorRotation());
+				}
+				else {
+					Log("No StartSpot!");
+				}
+			}
+			else {
+				Log("Not allowed!");
+			}
 		}
-		else {
-			Log("PhantomBooth does not exist!");
-		}*/
 
 		return ServerLoadingScreenDroppedOG(PC);
 	}

@@ -23,8 +23,43 @@ namespace Misc {
         return DispatchRequestOG(a1, a2, 3);
     }
 
+    __int64 (*K2_DestroyActorOG)(AActor* This, __int64 a2);
+    __int64 K2_DestroyActor(AActor* This, __int64 a2)
+    {
+        AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+        AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
+
+        std::string Name = This->GetName();
+        Log(Name);
+
+        if (GameState->GamePhase <= EAthenaGamePhase::Warmup) {
+            if (Name.contains("BGA")) {
+                int NumExisting = CountActorsWithName(This->Name, This->Class);
+
+                if (NumExisting <= 1)
+                {
+                    //Log(Name);
+                    DuplicateActor(This);
+                }
+            }
+            else if (Name.contains("StaticGenerator")) {
+                int NumExisting = CountActorsWithName(This->Name, This->Class);
+
+                if (NumExisting <= 1)
+                {
+                    //Log(Name);
+                    DuplicateActor(This);
+                }
+            }
+        }
+
+        __int64 result = K2_DestroyActorOG(This, a2);
+        //Log(std::to_string(result));
+        return result;
+    }
+
     void Hook() {
-        MH_CreateHook((LPVOID)(ImageBase + 0x2D95E00), True, nullptr); // collectgarbage
+        MH_CreateHook((LPVOID)(ImageBase + 0x2D95E00), False, nullptr); // collectgarbage
         MH_CreateHook((LPVOID)(ImageBase + 0x4155600), KickPlayer, (LPVOID*)&KickPlayerOG); // Kickplayer
         MH_CreateHook((LPVOID)(ImageBase + 0x1E23840), False, nullptr);// change gamesession id
         MH_CreateHook((LPVOID)(ImageBase + 0x108D740), DispatchRequest, (LPVOID*)&DispatchRequestOG);
@@ -34,6 +69,8 @@ namespace Misc {
         MH_CreateHook((LPVOID)(ImageBase + 0x3262100), nullFunc, nullptr);
         MH_CreateHook((LPVOID)(ImageBase + 0x1e23840), nullFunc, nullptr);
         MH_CreateHook((LPVOID)(ImageBase + 0x2d95dc0), nullFunc, nullptr);
+
+        MH_CreateHook((LPVOID)(ImageBase + 0x7F0220), K2_DestroyActor, (LPVOID*)&K2_DestroyActorOG);
 
         Log("Misc Hooked!");
     }

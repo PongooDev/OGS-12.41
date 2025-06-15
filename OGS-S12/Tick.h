@@ -156,7 +156,7 @@ namespace Tick {
 			GameMode::StartAircraftPhase(GameMode, 0);
 		}
 
-		if (GameState->GamePhase > EAthenaGamePhase::Warmup) {
+		if (GameState->GamePhase > EAthenaGamePhase::Warmup && !Globals::bCreativeEnabled) {
 			AccoladeTickingService::Tick(GameMode, GameState);
 		}
 

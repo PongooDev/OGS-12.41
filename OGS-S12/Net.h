@@ -6,8 +6,8 @@ struct LocRot {
 	FRotator Rotation;
 };
 
-/*TArray<LocRot> CameraSpawners;
-TArray<AActor*> CameraActors;*/
+TArray<LocRot> CameraSpawners;
+TArray<AActor*> CameraActors;
 
 namespace Net {
 	enum class ENetMode
@@ -43,7 +43,7 @@ namespace Net {
 	{
 		std::string Name = a1->GetName();
 
-		/*if (Name.contains("Security_Camera")) {
+		/*if (Name.contains("Sentry_Alarm")) {
 			TArray<AActor*> SecurityCameras;
 			auto CamClass = a1->Class;
 			Log(CamClass->GetFullName());
@@ -59,12 +59,6 @@ namespace Net {
 					for (auto* Cam : CameraActors) {
 						if (!Cam) continue;
 
-						for (auto Tag : Cam->Tags) {
-							if (Tag.ToString() == "Wow") {
-								return ENetMode::DedicatedServer;
-							}
-						}
-
 						LocRot locRot;
 						locRot.Location = Cam->K2_GetActorLocation();
 						locRot.Rotation = Cam->K2_GetActorRotation();
@@ -77,17 +71,14 @@ namespace Net {
 						Log("Yaw: " + std::to_string(locRot.Rotation.Yaw));
 						Log("Roll: " + std::to_string(locRot.Rotation.Roll));
 
-						AActor* SpawnedBooth = SpawnActor<AActor>(locRot.Location, locRot.Rotation, nullptr, CamClass);
-						SpawnedBooth->Tags.Add(UKismetStringLibrary::Conv_StringToName(L"Wow"));
-
 						CameraSpawners.Add(locRot);
 					}
 
-					Log("Updated PhantomBoothSpawners with " + std::to_string(CameraSpawners.Num()) + " entries.");
+					Log("Updated Cams with " + std::to_string(CameraSpawners.Num()) + " entries.");
 				}
 			}
 			else {
-				Log("PhantomBooth class is null!");
+				Log("Cam class is null!");
 			}
 		}*/
 

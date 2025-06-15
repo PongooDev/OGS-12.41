@@ -10,6 +10,7 @@
 #include "Net.h"
 #include "Tick.h"
 #include "Bots.h"
+#include "Creative.h"
 
 void InitConsole() {
     AllocConsole();
@@ -44,6 +45,7 @@ void Hook() {
     Tick::Hook();
 
     Bots::Hook();
+    Creative::Hook();
 
     MH_EnableHook(MH_ALL_HOOKS);
 }

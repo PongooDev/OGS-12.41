@@ -309,6 +309,35 @@ T* Actors(UClass* Class = T::StaticClass(), FVector Loc = {}, FRotator Rot = {},
 	return SpawnActor<T>(Loc, Rot, Owner, Class);
 }
 
+AActor* DuplicateActor(AActor* Original)
+{
+	if (!Original) return nullptr;
+
+	const FVector Location = Original->K2_GetActorLocation();
+	const FRotator Rotation = Original->K2_GetActorRotation();
+	const FTransform Transform = Original->GetTransform();
+
+	auto* Class = Original->Class;
+	auto* Owner = Original->GetOwner();
+
+	auto* Duplicated = (AActor*)UGameplayStatics::FinishSpawningActor(
+		UGameplayStatics::BeginDeferredActorSpawnFromClass(UWorld::GetWorld(), Class, Transform, ESpawnActorCollisionHandlingMethod::AlwaysSpawn, Owner),
+		Transform
+	);
+
+	if (Duplicated)
+	{
+		//FName DupedTag = UKismetStringLibrary::Conv_StringToName(L"_ServerSpawned_");
+
+		Duplicated->Name = Original->Name;
+		Duplicated->Tags = Original->Tags;
+
+		//Duplicated->Tags.Add(DupedTag);
+	}
+
+	return Duplicated;
+}
+
 AFortPickupAthena* SpawnPickup(UFortItemDefinition* ItemDef, int OverrideCount, int LoadedAmmo, FVector Loc, EFortPickupSourceTypeFlag SourceType, EFortPickupSpawnSource Source, AFortPawn* Pawn = nullptr)
 {
 	auto SpawnedPickup = Actors<AFortPickupAthena>(AFortPickupAthena::StaticClass(), Loc);
@@ -419,6 +448,21 @@ inline std::vector<T*> GetAllObjectsOfClass(UClass* Class = T::StaticClass())
 	}
 
 	return Objects;
+}
+
+int CountActorsWithName(FName TargetName, UClass* Class)
+{
+	TArray<AActor*> FoundActors;
+	auto* Statics = (UGameplayStatics*)UGameplayStatics::StaticClass()->DefaultObject;
+	Statics->GetAllActorsOfClass(UWorld::GetWorld(), Class, &FoundActors);
+
+	int Count = 0;
+	for (AActor* Actor : FoundActors)
+	{
+		if (Actor && Actor->GetName() == TargetName.ToString())
+			Count++;
+	}
+	return Count;
 }
 
 enum class EAccoladeEvent : uint8
