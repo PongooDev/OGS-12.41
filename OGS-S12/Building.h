@@ -159,7 +159,7 @@ namespace Building {
 					UFortAccoladeItemDefinition* AccoladeDef = StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_066_WeakSpotsInARow.AccoladeId_066_WeakSpotsInARow");
 
 					NumWeakSpots[InstigatedBy]++;
-					if (NumWeakSpots[InstigatedBy] == 3) {
+					if (NumWeakSpots[InstigatedBy] == 2) {
 						Quests::GiveAccolade(InstigatedBy, AccoladeDef);
 						NumWeakSpots[InstigatedBy] = 0;
 					}
