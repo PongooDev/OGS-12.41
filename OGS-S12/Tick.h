@@ -19,13 +19,13 @@ namespace AccoladeTickingService {
 	void Tick(AFortGameModeAthena* GameMode, AFortGameStateAthena* GameState) {
 		float CurrentTime = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
 
-		/*if (CurrentTime >= NextPlaytimeXPDrop) { // Broken or smth idk
+		if (CurrentTime >= NextPlaytimeXPDrop) { // Broken or smth idk
 			NextPlaytimeXPDrop = CurrentTime + 120.f; // 2 Minute interval
 			for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
 			{
 				Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_054_Playtime.AccoladeId_054_Playtime"));
 			}
-		}*/
+		}
 
 		int32 AliveCount = GameMode->AlivePlayers.Num() + GameMode->AliveBots.Num();
 
