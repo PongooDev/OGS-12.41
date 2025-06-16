@@ -59,11 +59,14 @@ static void* (*StaticFindObjectOG)(UClass*, UObject* Package, const wchar_t* Ori
 static void* (*StaticLoadObjectOG)(UClass* Class, UObject* InOuter, const TCHAR* Name, const TCHAR* Filename, uint32_t LoadFlags, UObject* Sandbox, bool bAllowObjectReconciliation, void*) = decltype(StaticLoadObjectOG)(ImageBase + 0x2E1D7A0);
 
 AFortAthenaMutator_Bots* BotMutator = nullptr;
+TArray<FVector> PickedSupplyDropLocations;
+TArray<APlayerController*> GivenLootPlayers;
 
 static TArray<AActor*> PlayerStarts;
 
 bool bFirstElimTriggered = false;
 bool bFirstEliminated = false;
+bool DontPlayAnimation = false;
 
 bool bFirstChestSearched = false;
 bool bFirstSupplyDropSearched = false;
@@ -424,14 +427,42 @@ inline void ShowFoundation(ABuildingFoundation* BuildingFoundation) {
 	BuildingFoundation->OnRep_DynamicFoundationRepData();
 }
 
-FVector PickSupplyDropLocation(AFortAthenaMapInfo* MapInfo, FVector Center, float Radius)
+FVector PickSupplyDropLocation(SDK::AFortAthenaMapInfo* MapInfo, SDK::FVector Center, float Radius)
 {
 	if (!PickSupplyDropLocationOG)
-		return FVector(0, 0, 0);
+		return SDK::FVector(0, 0, 0);
 
-	FVector loc = FVector(0, 0, 0);
-	auto PickSupplyDropLoc = PickSupplyDropLocationOG(MapInfo, &loc, __int64(&Center), Radius);
-	return loc;
+	const float MinDistance = 10000.0f;
+
+	for (int i = 0; i < 20; i++)
+	{
+		SDK::FVector loc = FVector(0, 0, 0);
+		PickSupplyDropLocationOG(MapInfo, &loc, (__int64)&Center, Radius);
+
+		bool bTooClose = false;
+		for (const auto& other : PickedSupplyDropLocations)
+		{
+			float dx = loc.X - other.X;
+			float dy = loc.Y - other.Y;
+			float dz = loc.Z - other.Z;
+
+			float distSquared = dx * dx + dy * dy + dz * dz;
+
+			if (distSquared < MinDistance * MinDistance)
+			{
+				bTooClose = true;
+				break;
+			}
+		}
+
+		if (!bTooClose)
+		{
+			PickedSupplyDropLocations.Add(loc);
+			return loc;
+		}
+	}
+
+	return SDK::FVector(0, 0, 0);
 }
 
 template<typename T>

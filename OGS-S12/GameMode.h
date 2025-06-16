@@ -292,6 +292,9 @@ namespace GameMode {
 
 	inline APawn* SpawnDefaultPawnFor(AFortGameModeAthena* GameMode, AFortPlayerController* Player, AActor* StartingLoc)
 	{
+		if (Player->Pawn)
+			return 0;
+
 		AFortPlayerControllerAthena* PC = (AFortPlayerControllerAthena*)Player;
 		AFortPlayerStateAthena* PlayerState = (AFortPlayerStateAthena*)PC->PlayerState;
 		AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
@@ -462,9 +465,43 @@ namespace GameMode {
 	void (*StormOG)(AFortGameModeAthena* GameMode, int32 ZoneIndex);
 	void __fastcall Storm(AFortGameModeAthena* GameMode, int32 ZoneIndex)
 	{
-		for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+		auto GameState = (AFortGameStateAthena*)GameMode->GameState;
+
+		static bool First = true;
+
+		if (Globals::LateGame && !First) //fixes crashing
 		{
-			Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_SurviveStormCircle.AccoladeID_SurviveStormCircle"));
+			for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+			{
+				Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_SurviveStormCircle.AccoladeID_SurviveStormCircle"));
+			}
+		}
+		else if (!Globals::LateGame)
+		{
+			for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+			{
+				Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_SurviveStormCircle.AccoladeID_SurviveStormCircle"));
+			}
+		}
+
+		static bool initstorm = false;
+
+		if (Globals::LateGame && !initstorm)
+		{
+			initstorm = true;
+			GameMode->SafeZonePhase = 4;
+			GameState->SafeZonePhase = 4;
+			GameState->SafeZonesStartTime = 0;
+			ZoneIndex = 4;
+			First = false;
+		}
+
+		if (Globals::LateGame && initstorm)
+		{
+			int newPhase = GameState->SafeZonePhase + 1;
+
+			GameMode->SafeZonePhase = newPhase;
+			GameState->SafeZonePhase = newPhase;
 		}
 
 		if (Globals::bBotsEnabled) {

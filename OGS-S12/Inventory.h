@@ -1,7 +1,14 @@
 #pragma once
 #include "framework.h"
+#include "LateGameLoot.h"
+#include "Looting.h"
 
 namespace Inventory {
+
+	bool DontPlayAnimation = false;
+
+
+
 	UFortItemDefinition* FindDefFromGuid(AFortPlayerControllerAthena* PC, FGuid Guid) {
 		for (int32 i = 0; i < PC->WorldInventory->Inventory.ReplicatedEntries.Num(); i++)
 		{
@@ -16,7 +23,7 @@ namespace Inventory {
 	EFortQuickBars GetQuickBars(UFortItemDefinition* ItemDefinition)
 	{
 		if (!ItemDefinition->IsA(UFortWeaponMeleeItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortEditToolItemDefinition::StaticClass()) &&
-			!ItemDefinition->IsA(UFortBuildingItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortTrapItemDefinition::StaticClass()))
+			!ItemDefinition->IsA(UFortBuildingItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()) && !ItemDefinition->IsA(UFortTrapItemDefinition::StaticClass()) && !ItemDefinition->IsA(AFortWeaponRangedForVehicle::StaticClass()))
 			return EFortQuickBars::Primary;
 
 		return EFortQuickBars::Secondary;
@@ -408,7 +415,7 @@ namespace Inventory {
 
 		if (IsInventoryFull(PC))
 		{
-			if (Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) || Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()))
+			if (Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) || Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()) || Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortTrapItemDefinition::StaticClass()))
 			{
 				GiveItemStack(PC, Pickup->PrimaryPickupItemEntry.ItemDefinition, Pickup->PrimaryPickupItemEntry.Count, Pickup->PrimaryPickupItemEntry.LoadedAmmo);
 
@@ -495,7 +502,7 @@ namespace Inventory {
 
 		if (!IsInventoryFull(PC))
 		{
-			if (Stackable && !Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) || Stackable && !Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()))
+			if (Stackable && !Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) || Stackable && !Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()) || Stackable && Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortTrapItemDefinition::StaticClass()))
 			{
 				for (size_t i = 0; i < PC->WorldInventory->Inventory.ReplicatedEntries.Num(); i++)
 				{
@@ -543,7 +550,7 @@ namespace Inventory {
 				return;
 			}
 
-			if (Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) || Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()))
+			if (Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortAmmoItemDefinition::StaticClass()) || Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortResourceItemDefinition::StaticClass()) || Pickup->PrimaryPickupItemEntry.ItemDefinition->IsA(UFortTrapItemDefinition::StaticClass()))
 			{
 				GiveItemStack(PC, Pickup->PrimaryPickupItemEntry.ItemDefinition, Pickup->PrimaryPickupItemEntry.Count, Pickup->PrimaryPickupItemEntry.LoadedAmmo);
 			}
@@ -566,7 +573,14 @@ namespace Inventory {
 	inline void ServerAttemptInventoryDrop(AFortPlayerControllerAthena* PC, FGuid ItemGuid, int Count, bool bTrash)
 	{
 		FFortItemEntry* Entry = FindEntry(PC, ItemGuid);
-		SpawnPickup(Entry->ItemDefinition, Count, Entry->LoadedAmmo, PC->Pawn->K2_GetActorLocation(), EFortPickupSourceTypeFlag::Player, EFortPickupSpawnSource::Unset);
+		AFortPlayerPawn* Pawn = (AFortPlayerPawn*)PC->Pawn;
+		SpawnPickup(Entry->ItemDefinition, Count, Entry->LoadedAmmo, PC->Pawn->K2_GetActorLocation(), EFortPickupSourceTypeFlag::Player, EFortPickupSpawnSource::Unset, Pawn);
+
+		if (Entry->ItemDefinition == StaticLoadObject<UFortItemDefinition>("/Game/Athena/Items/Consumables/Shields/Athena_Shields.Athena_Shields") || Entry->ItemDefinition == StaticLoadObject<UFortItemDefinition>("/Game/Athena/Items/Consumables/Medkit/Athena_Medkit.Athena_Medkit"))
+		{
+			DontPlayAnimation = true;
+		}
+
 		RemoveItem(PC, ItemGuid, Count);
 	}
 
@@ -619,31 +633,36 @@ namespace Inventory {
 		}
 
 
-		if (WeaponDef == StaticLoadObject<UFortItemDefinition>("/Game/Athena/Items/Consumables/Shields/Athena_Shields.Athena_Shields"))
+		if (WeaponDef == StaticLoadObject<UFortItemDefinition>("/Game/Athena/Items/Consumables/Shields/Athena_Shields.Athena_Shields") && !DontPlayAnimation)
 		{
 			FGameplayEffectContextHandle Handle = PlayerState->AbilitySystemComponent->MakeEffectContext();
 			FGameplayTag tag{};
 			static auto name = UKismetStringLibrary::GetDefaultObj()->Conv_StringToName(TEXT("GameplayCue.Shield.PotionConsumed"));
 			tag.TagName = name;
 
-			PlayerState->AbilitySystemComponent->NetMulticast_InvokeGameplayCueAdded(tag, FPredictionKey(), Handle);
+			//PlayerState->AbilitySystemComponent->NetMulticast_InvokeGameplayCueAdded(tag, FPredictionKey(), Handle);
 			PlayerState->AbilitySystemComponent->NetMulticast_InvokeGameplayCueExecuted(tag, FPredictionKey(), Handle);
 		}
 
-		if (WeaponDef == StaticLoadObject<UFortItemDefinition>("/Game/Athena/Items/Consumables/Medkit/Athena_Medkit.Athena_Medkit")) //doesnt work ;(
+		if (WeaponDef == StaticLoadObject<UFortItemDefinition>("/Game/Athena/Items/Consumables/Medkit/Athena_Medkit.Athena_Medkit") && !DontPlayAnimation)
 		{
 			FGameplayEffectContextHandle Handle = PlayerState->AbilitySystemComponent->MakeEffectContext();
-			FGameplayTag tag{};
+			FGameplayTag tag;
 			static auto name = UKismetStringLibrary::GetDefaultObj()->Conv_StringToName(TEXT("GameplayCue.Athena.Health.HealUsed"));
 			tag.TagName = name;
 
-			PlayerState->AbilitySystemComponent->NetMulticast_InvokeGameplayCueAdded(tag, FPredictionKey(), Handle);
+			//PlayerState->AbilitySystemComponent->NetMulticast_InvokeGameplayCueAdded(tag, FPredictionKey(), Handle);
 			PlayerState->AbilitySystemComponent->NetMulticast_InvokeGameplayCueExecuted(tag, FPredictionKey(), Handle);
 		}
 
 		PC->WorldInventory->bRequiresLocalUpdate = true;
 		//PC->WorldInventory->Inventory.MarkItemDirty();
 		PC->WorldInventory->HandleInventoryLocalUpdate();
+
+		if (DontPlayAnimation)
+		{
+			DontPlayAnimation = false;
+		}
 
 		return Ret;
 	}
@@ -715,6 +734,85 @@ namespace Inventory {
 		RemoveItem(PlayerController, ItemGuid, 1);
 
 		return RemoveCount;
+	}
+
+	//lategame
+	std::string GetRandomWeapon(const std::vector<std::string>& list) {
+		if (list.empty()) return "";
+		static std::random_device rd;
+		static std::mt19937 gen(rd());
+		std::uniform_int_distribution<> dist(0, list.size() - 1);
+		return list[dist(gen)];
+	}
+
+	UFortItemDefinition* LoadWeapon(const std::vector<std::string>& Pool)// fixes issue where deff is somehow null
+	{
+		for (int i = 0; i < 2; ++i)
+		{
+			std::string WeaponPath = GetRandomWeapon(Pool);
+			UFortItemDefinition* Def = StaticLoadObject<UFortItemDefinition>(WeaponPath);
+			if (Def)
+				return Def;
+		}
+		return nullptr;
+	}
+
+	void __fastcall GiveLoadout(AFortPlayerController* PC)
+	{
+		if (UFortItemDefinition* AssaultRifleDef = LoadWeapon(Assault_rifle))
+		{
+			GiveItem(PC, AssaultRifleDef, 1, Looting::GetClipSize(AssaultRifleDef));
+
+			if (auto* RangedDef = (UFortWeaponRangedItemDefinition*)AssaultRifleDef)
+			{
+				UFortWorldItemDefinition* AmmoDef = RangedDef->GetAmmoWorldItemDefinition_BP();
+				if (AmmoDef)
+					GiveItem(PC, AmmoDef, 200, 0);
+			}
+		}
+
+		if (UFortItemDefinition* ShotGunDef = LoadWeapon(Shotgun))
+		{
+			GiveItem(PC, ShotGunDef, 1, Looting::GetClipSize(ShotGunDef));
+
+			if (auto* RangedDef = (UFortWeaponRangedItemDefinition*)ShotGunDef)
+			{
+				UFortWorldItemDefinition* AmmoDef = RangedDef->GetAmmoWorldItemDefinition_BP();
+				if (AmmoDef)
+					GiveItem(PC, AmmoDef, 120, 0);
+			}
+		}
+
+		if (UFortItemDefinition* RandomDef = LoadWeapon(Mixed))
+		{
+			GiveItem(PC, RandomDef, 1, Looting::GetClipSize(RandomDef));
+
+			if (auto* RangedDef = (UFortWeaponRangedItemDefinition*)RandomDef)
+			{
+				UFortWorldItemDefinition* AmmoDef = RangedDef->GetAmmoWorldItemDefinition_BP();
+				if (AmmoDef)
+					GiveItem(PC, AmmoDef, 120, 0);
+			}
+		}
+
+		if (auto Consumable1Def = LoadWeapon(Consumables))
+			GiveItemStack(PC, Consumable1Def, 3, 0);
+
+		if (auto Consumable2Def = LoadWeapon(Consumables))
+			GiveItemStack(PC, Consumable2Def, 3, 0);
+
+		if (auto TrapDef = LoadWeapon(Traps))
+			GiveItem(PC, TrapDef, 3, 0);
+
+		static UFortItemDefinition* WoodDef = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/WoodItemData.WoodItemData");
+		GiveItem(PC, WoodDef, 500, 0);
+
+		static UFortItemDefinition* StoneDef = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/StoneItemData.StoneItemData");
+		GiveItem(PC, StoneDef, 500, 0);
+
+		static UFortItemDefinition* MetalDef = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/MetalItemData.MetalItemData");
+		GiveItem(PC, MetalDef, 500, 0);
+
 	}
 
 	void Hook() {

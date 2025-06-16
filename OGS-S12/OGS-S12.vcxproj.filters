@@ -117,6 +117,9 @@
     <ClInclude Include="Creative.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="LateGameLoot.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

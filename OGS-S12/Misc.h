@@ -58,6 +58,23 @@ namespace Misc {
         return result;
     }
 
+    void LateGameAircraftThread(FVector BattleBusLocation)
+    {
+        auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
+        auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+
+        Sleep(3000);
+
+        GameState->bAircraftIsLocked = false;
+
+        GameMode->OnAircraftExitedDropZone(GameState->GetAircraft(0));
+
+        GameState->GamePhase = EAthenaGamePhase::SafeZones;
+
+        GameState->SafeZonesStartTime = 1;
+
+    }
+
     void Hook() {
         MH_CreateHook((LPVOID)(ImageBase + 0x2D95E00), False, nullptr); // collectgarbage
         MH_CreateHook((LPVOID)(ImageBase + 0x4155600), KickPlayer, (LPVOID*)&KickPlayerOG); // Kickplayer

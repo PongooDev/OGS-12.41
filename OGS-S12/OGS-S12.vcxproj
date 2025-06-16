@@ -150,6 +150,7 @@
     <ClInclude Include="GameMode.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="Inventory.h" />
+    <ClInclude Include="LateGameLoot.h" />
     <ClInclude Include="Looting.h" />
     <ClInclude Include="Misc.h" />
     <ClInclude Include="Net.h" />

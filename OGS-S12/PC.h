@@ -7,6 +7,8 @@
 #include "PlayerBots.h"
 
 #include "PhantomBoothSpawner.h"
+#include "Misc.h"
+#include "GameMode.h"
 
 namespace PC {
 	// The accolades i need to do (there is way too many accolades so these are just the main ones i want completed)
@@ -53,6 +55,17 @@ namespace PC {
 			if (true) {
 				PhantomBoothSpawner::SpawnBooths();
 			}
+
+			TArray<AActor*> VendingMachinesArray;
+
+			Statics->GetAllActorsOfClass(UWorld::GetWorld(), UObject::FindObject<UClass>("BlueprintGeneratedClass B_Athena_VendingMachine.B_Athena_VendingMachine_C"), &VendingMachinesArray);
+
+			for (size_t i = 0; i < VendingMachinesArray.Num(); i++)
+			{
+				VendingMachinesArray[i]->K2_DestroyActor();
+			}
+
+			VendingMachinesArray.Free();
 		}
 
 		return ServerReadyToStartMatchOG(PC);
@@ -376,7 +389,7 @@ namespace PC {
 				}
 
 				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_019_SearchSupplyDrop.AccoladeId_019_SearchSupplyDrop"));
-			
+
 				if (!bFirstSupplyDropSearched) {
 					bFirstSupplyDropSearched = true;
 					Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_070_FirstSearchedSupplyDrop.AccoladeId_070_FirstSearchedSupplyDrop"));
@@ -417,10 +430,10 @@ namespace PC {
 
 			Quests::ProgressQuest(PC, QuestsRequiredOnProfile[0], Primary_BackendName);
 		}*/ // Super Buggy Sometimes
-		else if (ReceivingActor->Class->GetName().contains("Ammo")) {
+		else if (ReceivingActor->Class->GetName().contains("Ammo") && !Globals::LateGame) {
 			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_011_SearchAmmoBox.AccoladeId_011_SearchAmmoBox"));
 		}
-		else if (ReceivingActor->Class->GetName().contains("FactionChest")) {
+		else if (ReceivingActor->Class->GetName().contains("FactionChest") && !Globals::LateGame) {
 			ChestsSearched[PC]++;
 			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
 			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_080_OpenFactionChest.AccoladeId_080_OpenFactionChest"));
@@ -430,7 +443,7 @@ namespace PC {
 				Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_069_FirstSearchedChest.AccoladeId_069_FirstSearchedChest"));
 			}
 		}
-		else if (ReceivingActor->Class->GetName().contains("Tiered_"))
+		else if (ReceivingActor->Class->GetName().contains("Tiered_") && !Globals::LateGame)
 		{
 			ChestsSearched[PC]++;
 			Quests::GiveAccolade(PC, GetDefFromEvent(EAccoladeEvent::Search, ChestsSearched[PC], ReceivingActor));
@@ -612,6 +625,13 @@ namespace PC {
 	{
 		if (!Consumable)
 			return OnExplodedOG(Consumable, HitActors, HitResults);
+
+		if (Consumable->GetName() == "B_Prj_Lotus_Mustache_C") {
+			auto PC = Consumable->GetOwnerPlayerController();
+			auto Pawn = PC->MyFortPawn;
+			UFortItemDefinition* Deff = StaticLoadObject<UFortItemDefinition>("/Game/Athena/Items/Consumables/Bandage/Athena_Bandage.Athena_Bandage");
+			SpawnPickup(Deff, 1, 0, Consumable->K2_GetActorLocation(), EFortPickupSourceTypeFlag::Tossed, EFortPickupSpawnSource::Unset, Pawn);
+		}
 		else if (Consumable->GetName() == "B_Prj_Athena_Bucket_Old_C" || Consumable->GetName() == "B_Prj_Athena_Bucket_Nice_C") {
 			auto PC = Consumable->GetOwnerPlayerController();
 			auto Pawn = PC->MyFortPawn;
@@ -710,6 +730,18 @@ namespace PC {
 		}
 	}
 
+	void (*MovingEmoteStoppedOG)(AFortPawn* Pawn);
+	void MovingEmoteStopped(AFortPawn* Pawn)
+	{
+		if (!Pawn)
+			return;
+
+		Pawn->bMovingEmote = false;
+		Pawn->bMovingEmoteFollowingOnly = false;
+
+		return MovingEmoteStoppedOG(Pawn);
+	}
+
 	static inline void(*OrginalServerSetInAircraft)(AFortPlayerStateAthena* PlayerState, bool bNewInAircraft);
 	void ServerSetInAircraft(AFortPlayerStateAthena* PlayerState, bool bNewInAircraft)
 	{
@@ -720,7 +752,12 @@ namespace PC {
 		{
 			for (int i = PC->WorldInventory->Inventory.ReplicatedEntries.Num() - 1; i >= 0; i--)
 			{
-				if (((UFortWorldItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition)->bCanBeDropped)
+				if (((UFortWorldItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition)->bCanBeDropped && !GivenLootPlayers.Contains(PC) && Globals::LateGame)
+				{
+					int Count = PC->WorldInventory->Inventory.ReplicatedEntries[i].Count;
+					Inventory::RemoveItem(PC, PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemGuid, Count);
+				}
+				else if (((UFortWorldItemDefinition*)PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemDefinition)->bCanBeDropped && !Globals::LateGame)
 				{
 					int Count = PC->WorldInventory->Inventory.ReplicatedEntries[i].Count;
 					Inventory::RemoveItem(PC, PC->WorldInventory->Inventory.ReplicatedEntries[i].ItemGuid, Count);
@@ -740,6 +777,33 @@ namespace PC {
 			Aircraft->FlightInfo.TimeTillDropStart = 1;
 			Aircraft->DropStartTime = UGameplayStatics::GetTimeSeconds(UWorld::GetWorld()) + 1;
 			GameState->bAircraftIsLocked = false;
+		}
+
+		if (Globals::LateGame)
+		{
+			auto GameState = (AFortGameStateAthena*)UEngine::GetEngine()->GameViewport->World->GameState;
+			auto GameMode = (AFortGameModeAthena*)UEngine::GetEngine()->GameViewport->World->AuthorityGameMode;
+			FVector BattleBusLocation = GameMode->SafeZoneLocations[3];
+			BattleBusLocation.Z += 15000;
+			auto Aircraft = GameState->GetAircraft(0);
+
+
+			if (Aircraft)
+			{
+				Aircraft->FlightInfo.FlightSpeed = 0;
+				Aircraft->FlightInfo.FlightStartLocation = FVector_NetQuantize100(BattleBusLocation);
+				Aircraft->ExitLocation = BattleBusLocation;
+				GameState->bAircraftIsLocked = true;
+			}
+
+			if (!GivenLootPlayers.Contains(PC))
+			{
+				Inventory::GiveLoadout(PC);
+				GivenLootPlayers.Add(PC);
+			}
+
+			std::thread(Misc::LateGameAircraftThread, BattleBusLocation).detach();
+
 		}
 
 		return OrginalServerSetInAircraft(PlayerState, bNewInAircraft);
@@ -787,6 +851,32 @@ namespace PC {
 		PlayerState->OnRep_DeathInfo();
 
 		PC->ClientOnPawnRevived(Instigator);
+	}
+
+	inline void (*ServerAttemptExitVehicleOG)(AFortPlayerController* PC);
+	inline void ServerAttemptExitVehicle(AFortPlayerControllerZone* PC)
+	{
+		if (!PC)
+			return;
+
+		auto Pawn = (AFortPlayerPawn*)PC->Pawn;
+
+		ServerAttemptExitVehicleOG(PC);
+
+		if (!Pawn->CurrentWeapon || !Pawn->CurrentWeapon->IsA(AFortWeaponRangedForVehicle::StaticClass()))
+			return;
+
+		Inventory::RemoveItem((AFortPlayerController*)Pawn->Controller, Pawn->CurrentWeapon->GetInventoryGUID(), 1);
+
+		UFortWorldItemDefinition* SwappingItemDef = ((AFortPlayerControllerAthena*)PC)->SwappingItemDefinition;
+		if (!SwappingItemDef)
+			return;
+
+		FFortItemEntry* SwappingItemEntry = Inventory::FindItemEntry(PC, SwappingItemDef);
+		if (!SwappingItemEntry)
+			return;
+
+		PC->MyFortPawn->EquipWeaponDefinition((UFortWeaponItemDefinition*)SwappingItemDef, SwappingItemEntry->ItemGuid);
 	}
 
 	void ServerReturnToMainMenu(AFortPlayerControllerAthena* PC)
@@ -846,6 +936,21 @@ namespace PC {
 			PC->Pawn->K2_TeleportTo(TeleportLoc, PC->Pawn->K2_GetActorRotation());
 			Log("Teleported: X: " + args[1] + " Y: " + args[2] + " Z: " + args[3]);
 		}
+		else if (Command == "StartEvent")
+		{
+			UFunction* StartEventFunc = GameMode::Event::JerkyLoader->Class->GetFunction("BP_Jerky_Loader_C", "startevent");
+
+			float ToStart = 0.f;
+			GameMode::Event::JerkyLoader->ProcessEvent(StartEventFunc, &ToStart);
+		}
+		else if (Command == "startaircraft")
+		{
+			UKismetSystemLibrary::GetDefaultObj()->ExecuteConsoleCommand(UWorld::GetWorld(), TEXT("startaircraft"), nullptr);
+		}
+		else if (Command == "pausesafezone")
+		{
+			UKismetSystemLibrary::GetDefaultObj()->ExecuteConsoleCommand(UWorld::GetWorld(), TEXT("pausesafezone"), nullptr);
+		}
 	}
 
 	void Hook() {
@@ -876,6 +981,11 @@ namespace PC {
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x265, ServerReturnToMainMenu, nullptr);
 
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x1C5, ServerCheat, nullptr);
+
+		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x41E, ServerAttemptExitVehicle, (PVOID*)&ServerAttemptExitVehicleOG);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x6853B0), MovingEmoteStopped, (LPVOID*)&MovingEmoteStoppedOG);
+
 		//MH_CreateHook((LPVOID)(ImageBase + 0xF703E0), ServerCheat, nullptr);
 
 		for (size_t i = 0; i < UObject::GObjects->Num(); i++)

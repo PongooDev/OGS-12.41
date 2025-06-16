@@ -367,10 +367,6 @@ namespace Looting {
     {
         std::string ClassName = BuildingContainer->Class->GetName();
 
-        BuildingContainer->bAlreadySearched = true;
-        BuildingContainer->SearchBounceData.SearchAnimationCount++;
-        BuildingContainer->OnRep_bAlreadySearched();
-
         auto SearchLootTierGroup = BuildingContainer->SearchLootTierGroup;
         EFortPickupSpawnSource SpawnSource = EFortPickupSpawnSource::Unset;
 
@@ -386,69 +382,18 @@ namespace Looting {
             PickupSourceTypeFlags = EFortPickupSourceTypeFlag::FloorLoot;
         }
 
-        if (SearchLootTierGroup == Loot_Treasure)
+        if (!Globals::LateGame)
         {
-            EFortPickupSourceTypeFlag PickupSourceTypeFlags = EFortPickupSourceTypeFlag::Container;
-
-            SearchLootTierGroup = UKismetStringLibrary::Conv_StringToName(L"Loot_AthenaTreasure");
-            SpawnSource = EFortPickupSpawnSource::Chest;
+            BuildingContainer->bAlreadySearched = true;
+            BuildingContainer->SearchBounceData.SearchAnimationCount++;
+            BuildingContainer->OnRep_bAlreadySearched();
         }
-
-        if (SearchLootTierGroup == Loot_Ammo)
+        else if (Globals::LateGame && SearchLootTierGroup == Loot_AthenaFloorLoot_Warmup)
         {
-            EFortPickupSourceTypeFlag PickupSourceTypeFlags = EFortPickupSourceTypeFlag::Container;
+            BuildingContainer->bAlreadySearched = true;
+            BuildingContainer->SearchBounceData.SearchAnimationCount++;
+            BuildingContainer->OnRep_bAlreadySearched();
 
-            SearchLootTierGroup = UKismetStringLibrary::Conv_StringToName(L"Loot_AthenaAmmoLarge");
-            SpawnSource = EFortPickupSpawnSource::AmmoBox;
-        }
-
-        if (ClassName.contains("Tiered_Chest_Athena_FactionChest"))
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                auto LootDrops = PickLootDrops(SearchLootTierGroup);
-
-                auto CorrectLocation = BuildingContainer->K2_GetActorLocation() + (BuildingContainer->GetActorForwardVector() * BuildingContainer->LootSpawnLocation_Athena.X) + (BuildingContainer->GetActorRightVector() * BuildingContainer->LootSpawnLocation_Athena.Y) + (BuildingContainer->GetActorUpVector() * BuildingContainer->LootSpawnLocation_Athena.Z);
-
-                for (auto& LootDrop : LootDrops)
-                {
-                    SpawnPickup(LootDrop.ItemDefinition, LootDrop.Count, LootDrop.LoadedAmmo, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
-
-                    UFortAmmoItemDefinition* AmmoDef = (UFortAmmoItemDefinition*)((UFortWeaponRangedItemDefinition*)LootDrop.ItemDefinition)->GetAmmoWorldItemDefinition_BP();
-
-                    if (AmmoDef && LootDrop.ItemDefinition != AmmoDef && AmmoDef->DropCount > 0)
-                    {
-                        SpawnPickup(AmmoDef, AmmoDef->DropCount, 0, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
-                    }
-                }
-            }
-            return true;
-        }
-
-        else if (ClassName.contains("Tiered_Chest"))
-        {
-            auto LootDrops = PickLootDrops(SearchLootTierGroup);
-
-            auto CorrectLocation = BuildingContainer->K2_GetActorLocation() + (BuildingContainer->GetActorForwardVector() * BuildingContainer->LootSpawnLocation_Athena.X) + (BuildingContainer->GetActorRightVector() * BuildingContainer->LootSpawnLocation_Athena.Y) + (BuildingContainer->GetActorUpVector() * BuildingContainer->LootSpawnLocation_Athena.Z);
-
-            for (auto& LootDrop : LootDrops)
-            {
-                SpawnPickup(LootDrop.ItemDefinition, LootDrop.Count, LootDrop.LoadedAmmo, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
-            }
-
-            static auto Wood = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/WoodItemData.WoodItemData");
-            static auto Metal = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/MetalItemData.MetalItemData");
-            static auto Stone = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/StoneItemData.StoneItemData");
-
-            UFortItemDefinition* Mats = (rand() % 40 > 20) ? ((rand() % 20 > 10) ? Wood : Stone) : Metal;
-
-            SpawnPickup(Mats, 30, 0, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
-
-            return true;
-        }
-
-        else
-        {
             auto LootDrops = PickLootDrops(SearchLootTierGroup);
 
             auto CorrectLocation = BuildingContainer->K2_GetActorLocation() + (BuildingContainer->GetActorForwardVector() * BuildingContainer->LootSpawnLocation_Athena.X) + (BuildingContainer->GetActorRightVector() * BuildingContainer->LootSpawnLocation_Athena.Y) + (BuildingContainer->GetActorUpVector() * BuildingContainer->LootSpawnLocation_Athena.Z);
@@ -475,6 +420,102 @@ namespace Looting {
                     }
                 }
 
+            }
+        }
+
+        if (!Globals::LateGame)
+        {
+
+            if (SearchLootTierGroup == Loot_Treasure)
+            {
+                EFortPickupSourceTypeFlag PickupSourceTypeFlags = EFortPickupSourceTypeFlag::Container;
+
+                SearchLootTierGroup = UKismetStringLibrary::Conv_StringToName(L"Loot_AthenaTreasure");
+                SpawnSource = EFortPickupSpawnSource::Chest;
+            }
+
+            if (SearchLootTierGroup == Loot_Ammo)
+            {
+                EFortPickupSourceTypeFlag PickupSourceTypeFlags = EFortPickupSourceTypeFlag::Container;
+
+                SearchLootTierGroup = UKismetStringLibrary::Conv_StringToName(L"Loot_AthenaAmmoLarge");
+                SpawnSource = EFortPickupSpawnSource::AmmoBox;
+            }
+
+            if (ClassName.contains("Tiered_Chest_Athena_FactionChest"))
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    auto LootDrops = PickLootDrops(SearchLootTierGroup);
+
+                    auto CorrectLocation = BuildingContainer->K2_GetActorLocation() + (BuildingContainer->GetActorForwardVector() * BuildingContainer->LootSpawnLocation_Athena.X) + (BuildingContainer->GetActorRightVector() * BuildingContainer->LootSpawnLocation_Athena.Y) + (BuildingContainer->GetActorUpVector() * BuildingContainer->LootSpawnLocation_Athena.Z);
+
+                    for (auto& LootDrop : LootDrops)
+                    {
+                        SpawnPickup(LootDrop.ItemDefinition, LootDrop.Count, LootDrop.LoadedAmmo, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
+
+                        UFortAmmoItemDefinition* AmmoDef = (UFortAmmoItemDefinition*)((UFortWeaponRangedItemDefinition*)LootDrop.ItemDefinition)->GetAmmoWorldItemDefinition_BP();
+
+                        if (AmmoDef && LootDrop.ItemDefinition != AmmoDef && AmmoDef->DropCount > 0)
+                        {
+                            SpawnPickup(AmmoDef, AmmoDef->DropCount, 0, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
+                        }
+                    }
+                }
+                return true;
+            }
+
+            else if (ClassName.contains("Tiered_Chest"))
+            {
+                auto LootDrops = PickLootDrops(SearchLootTierGroup);
+
+                auto CorrectLocation = BuildingContainer->K2_GetActorLocation() + (BuildingContainer->GetActorForwardVector() * BuildingContainer->LootSpawnLocation_Athena.X) + (BuildingContainer->GetActorRightVector() * BuildingContainer->LootSpawnLocation_Athena.Y) + (BuildingContainer->GetActorUpVector() * BuildingContainer->LootSpawnLocation_Athena.Z);
+
+                for (auto& LootDrop : LootDrops)
+                {
+                    SpawnPickup(LootDrop.ItemDefinition, LootDrop.Count, LootDrop.LoadedAmmo, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
+                }
+
+                static auto Wood = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/WoodItemData.WoodItemData");
+                static auto Metal = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/MetalItemData.MetalItemData");
+                static auto Stone = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/StoneItemData.StoneItemData");
+
+                UFortItemDefinition* Mats = (rand() % 40 > 20) ? ((rand() % 20 > 10) ? Wood : Stone) : Metal;
+
+                SpawnPickup(Mats, 30, 0, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
+
+                return true;
+            }
+
+            else
+            {
+                auto LootDrops = PickLootDrops(SearchLootTierGroup);
+
+                auto CorrectLocation = BuildingContainer->K2_GetActorLocation() + (BuildingContainer->GetActorForwardVector() * BuildingContainer->LootSpawnLocation_Athena.X) + (BuildingContainer->GetActorRightVector() * BuildingContainer->LootSpawnLocation_Athena.Y) + (BuildingContainer->GetActorUpVector() * BuildingContainer->LootSpawnLocation_Athena.Z);
+
+                for (auto& LootDrop : LootDrops)
+                {
+                    if (LootDrop.Count > 0)
+                    {
+                        SpawnPickup(LootDrop.ItemDefinition, LootDrop.Count, LootDrop.LoadedAmmo, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
+
+                        if (SearchLootTierGroup == Loot_AthenaFloorLoot || SearchLootTierGroup == Loot_AthenaFloorLoot_Warmup)
+                        {
+                            if (LootDrop.ItemDefinition->GetName() == "WID_Athena_HappyGhost")
+                            {
+                                return 0;
+                            }
+
+                            UFortAmmoItemDefinition* AmmoDef = (UFortAmmoItemDefinition*)((UFortWeaponRangedItemDefinition*)LootDrop.ItemDefinition)->GetAmmoWorldItemDefinition_BP();
+
+                            if (AmmoDef && LootDrop.ItemDefinition != AmmoDef && AmmoDef->DropCount > 0)
+                            {
+                                SpawnPickup(AmmoDef, AmmoDef->DropCount, 0, CorrectLocation, PickupSourceTypeFlags, SpawnSource);
+                            }
+                        }
+                    }
+
+                }
             }
         }
 

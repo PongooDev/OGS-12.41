@@ -2,26 +2,26 @@
 #include "framework.h"
 
 namespace Vehicles {
-	void ServerMove(AFortPhysicsPawn* Pawn, FReplicatedPhysicsPawnState InState)
-	{
-		UPrimitiveComponent* Mesh = (UPrimitiveComponent*)Pawn->RootComponent;
 
-		if (Mesh) {
-			InState.Rotation.X -= 2.5;
-			InState.Rotation.Y /= 0.3;
-			InState.Rotation.Z -= -2.0;
-			InState.Rotation.W /= -1.2;
+	void ServerMove(AFortPhysicsPawn* PhysicsPawn, FReplicatedPhysicsPawnState InState) {
 
-			FTransform Transform{};
-			Transform.Translation = InState.Translation;
-			Transform.Rotation = InState.Rotation;
-			Transform.Scale3D = FVector{ 1, 1, 1 };
+		UPrimitiveComponent* RootComponent = static_cast<UPrimitiveComponent*>(PhysicsPawn->RootComponent);
 
-			Mesh->K2_SetWorldTransform(Transform, false, nullptr, true);
-			Mesh->bComponentToWorldUpdated = true;
-			Mesh->SetPhysicsLinearVelocity(InState.LinearVelocity, 0, FName());
-			Mesh->SetPhysicsAngularVelocity(InState.AngularVelocity, 0, FName());
-		}
+		InState.Rotation.X -= 2.5f;
+		InState.Rotation.Y /= 0.3f;
+		InState.Rotation.Z += 2.0f;
+		InState.Rotation.W /= -1.2f;
+
+		FTransform Transform;
+		Transform.Translation = InState.Translation;
+		Transform.Rotation = InState.Rotation;
+		Transform.Scale3D = FVector(1.0f, 1.0f, 1.0f);
+
+		RootComponent->K2_SetWorldTransform(Transform, false, nullptr, true);
+		RootComponent->bComponentToWorldUpdated = true;
+
+		RootComponent->SetPhysicsLinearVelocity(InState.LinearVelocity, false, FName());
+		RootComponent->SetPhysicsAngularVelocity(InState.AngularVelocity, false, FName());
 	}
 
 	void SpawnVehicles()

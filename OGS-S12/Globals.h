@@ -10,6 +10,8 @@ namespace Globals {
 	bool bBossesEnabled = true;
 	bool bBotsEnabled = true;
 
+	bool LateGame = false;
+
 	int MaxBotsToSpawn = 100;
 	int MinPlayersForEarlyStart = 95;
 }
