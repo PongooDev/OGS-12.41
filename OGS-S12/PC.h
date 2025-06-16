@@ -790,7 +790,7 @@ namespace PC {
 
 			if (Aircraft)
 			{
-				Aircraft->FlightInfo.FlightSpeed = 0;
+				Aircraft->FlightInfo.FlightSpeed = 2500;
 				Aircraft->FlightInfo.FlightStartLocation = FVector_NetQuantize100(BattleBusLocation);
 				Aircraft->ExitLocation = BattleBusLocation;
 				GameState->bAircraftIsLocked = true;

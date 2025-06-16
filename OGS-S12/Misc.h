@@ -63,7 +63,7 @@ namespace Misc {
         auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
         auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
 
-        Sleep(3000);
+        Sleep(100);
 
         GameState->bAircraftIsLocked = false;
 
