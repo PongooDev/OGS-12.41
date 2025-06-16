@@ -63,7 +63,7 @@ namespace Misc {
         auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
         auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
 
-        Sleep(100);
+        Sleep(2500);
 
         GameState->bAircraftIsLocked = false;
 
@@ -72,7 +72,6 @@ namespace Misc {
         GameState->GamePhase = EAthenaGamePhase::SafeZones;
 
         GameState->SafeZonesStartTime = 1;
-
     }
 
     void Hook() {

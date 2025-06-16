@@ -387,17 +387,30 @@ namespace GameMode {
 
 		for (auto PlayerBot : PlayerBotArray)
 		{
-			static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
-			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
-			PlayerBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusLocked);
-			PlayerBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+			if (!Globals::LateGame) {
+				auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+				auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+				PlayerBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusLocked);
+				PlayerBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+			}
+			else {
+				auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+				auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+				PlayerBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusFlying);
+				PlayerBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+			}
 
 			static auto Name4 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_JumpOffBus_ExecutionStatus"));
 			static auto Name3 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsInBus"));
 			PlayerBot->PC->Blackboard->SetValueAsBool(Name3, true);
 			PlayerBot->PC->Blackboard->SetValueAsEnum(Name4, (uint8)EExecutionStatus::ExecutionAllowed);
-
-			PlayerBot->BotState = EBotState::PreBus; // Proper!
+			 
+			if (!Globals::LateGame) {
+				PlayerBot->BotState = EBotState::PreBus; // Proper!
+			}
+			else {
+				PlayerBot->BotState = EBotState::Bus;
+			}
 		}
 
 		return StartAircraftPhaseOG(GameMode, a2);
@@ -445,18 +458,20 @@ namespace GameMode {
 			FactionBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
 		}
 
-		for (auto PlayerBot : PlayerBotArray)
-		{
-			static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
-			static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
-			PlayerBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusFlying);
-			PlayerBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
+		if (!Globals::LateGame) {
+			for (auto PlayerBot : PlayerBotArray)
+			{
+				static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
+				static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
+				PlayerBot->PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::BusFlying);
+				PlayerBot->PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Aircraft);
 
-			static auto Name9 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsInBus"));
+				static auto Name9 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsInBus"));
 
-			PlayerBot->PC->Blackboard->SetValueAsBool(Name9, true);
+				PlayerBot->PC->Blackboard->SetValueAsBool(Name9, true);
 
-			PlayerBot->BotState = EBotState::Bus;
+				PlayerBot->BotState = EBotState::Bus;
+			}
 		}
 
 		return OnAircraftEnteredDropZoneOG(a1);
@@ -494,6 +509,13 @@ namespace GameMode {
 			GameState->SafeZonesStartTime = 0;
 			ZoneIndex = 4;
 			First = false;
+
+			if (Globals::bBotsEnabled) {
+				for (size_t i = 0; i < PlayerBotArray.size(); i++)
+				{
+					PlayerBotArray[i]->BotState = EBotState::Bus;
+				}
+			}
 		}
 
 		if (Globals::LateGame && initstorm)
@@ -504,13 +526,13 @@ namespace GameMode {
 			GameState->SafeZonePhase = newPhase;
 		}
 
-		if (Globals::bBotsEnabled) {
+		if (Globals::bBotsEnabled && !Globals::LateGame) {
 			for (size_t i = 0; i < PlayerBotArray.size(); i++)
 			{
 				// Lets actually make sure the bot landed first before moving to zone
-				if (PlayerBotArray[i]->BotState < EBotState::Landed) {
+				if (PlayerBotArray[i]->BotState < EBotState::Landed)
 					continue;
-				}
+				Log("SafeZone!");
 				PlayerBotArray[i]->BotState = EBotState::MovingToSafeZone; // i dont know the best way to get the bots to move to zone tbh
 			}
 		}

@@ -783,17 +783,25 @@ namespace PC {
 		{
 			auto GameState = (AFortGameStateAthena*)UEngine::GetEngine()->GameViewport->World->GameState;
 			auto GameMode = (AFortGameModeAthena*)UEngine::GetEngine()->GameViewport->World->AuthorityGameMode;
-			FVector BattleBusLocation = GameMode->SafeZoneLocations[3];
+			FVector BattleBusLocation = GameMode->SafeZoneLocations[4];
 			BattleBusLocation.Z += 15000;
 			auto Aircraft = GameState->GetAircraft(0);
 
+			float Speed = 1000;
+			float Distance = Speed * 1.5f; // Speed x time
+			FVector Direction = FVector(1, 0, 0);
+			Direction.Normalize();
+
+			FVector StartLocation = BattleBusLocation;
+			FVector EndLocation = StartLocation + (Direction * Distance);
 
 			if (Aircraft)
 			{
-				Aircraft->FlightInfo.FlightSpeed = 2500;
-				Aircraft->FlightInfo.FlightStartLocation = FVector_NetQuantize100(BattleBusLocation);
-				Aircraft->ExitLocation = BattleBusLocation;
-				GameState->bAircraftIsLocked = true;
+				Aircraft->FlightInfo.FlightSpeed = Speed;
+				Aircraft->FlightInfo.FlightStartLocation = FVector_NetQuantize100(StartLocation);
+				Aircraft->FlightInfo.TimeTillFlightEnd = 1.5f;
+				Aircraft->ExitLocation = EndLocation;
+				GameState->bAircraftIsLocked = false;
 			}
 
 			if (!GivenLootPlayers.Contains(PC))
@@ -803,7 +811,6 @@ namespace PC {
 			}
 
 			std::thread(Misc::LateGameAircraftThread, BattleBusLocation).detach();
-
 		}
 
 		return OrginalServerSetInAircraft(PlayerState, bNewInAircraft);

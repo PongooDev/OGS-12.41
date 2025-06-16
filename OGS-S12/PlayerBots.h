@@ -93,6 +93,9 @@ public:
     // Has the bot thanked the bus driver
     bool bHasThankedBusDriver = false;
 
+    // Has the bot jumped from the bus, if not then set the botstate to bus.
+    bool bHasJumpedFromBus = false;
+
     // The dropzone that the bot will attempt to land at
     FVector TargetDropZone = FVector();
 
@@ -754,6 +757,63 @@ public:
             TargetLootable = nullptr;
         }
     }
+
+    void __fastcall GiveLategameLoadout()
+    {
+        if (UFortItemDefinition* AssaultRifleDef = Inventory::LoadWeapon(Assault_rifle))
+        {
+            GiveItemBot(AssaultRifleDef, 1, Looting::GetClipSize(AssaultRifleDef));
+
+            if (auto* RangedDef = (UFortWeaponRangedItemDefinition*)AssaultRifleDef)
+            {
+                UFortWorldItemDefinition* AmmoDef = RangedDef->GetAmmoWorldItemDefinition_BP();
+                if (AmmoDef)
+                    GiveItemBot(AmmoDef, 200, 0);
+            }
+        }
+
+        if (UFortItemDefinition* ShotGunDef = Inventory::LoadWeapon(Shotgun))
+        {
+            GiveItemBot(ShotGunDef, 1, Looting::GetClipSize(ShotGunDef));
+
+            if (auto* RangedDef = (UFortWeaponRangedItemDefinition*)ShotGunDef)
+            {
+                UFortWorldItemDefinition* AmmoDef = RangedDef->GetAmmoWorldItemDefinition_BP();
+                if (AmmoDef)
+                    GiveItemBot(AmmoDef, 120, 0);
+            }
+        }
+
+        if (UFortItemDefinition* RandomDef = Inventory::LoadWeapon(Mixed))
+        {
+            GiveItemBot(RandomDef, 1, Looting::GetClipSize(RandomDef));
+
+            if (auto* RangedDef = (UFortWeaponRangedItemDefinition*)RandomDef)
+            {
+                UFortWorldItemDefinition* AmmoDef = RangedDef->GetAmmoWorldItemDefinition_BP();
+                if (AmmoDef)
+                    GiveItemBot(AmmoDef, 120, 0);
+            }
+        }
+
+        if (auto Consumable1Def = Inventory::LoadWeapon(Consumables))
+            GiveItemBot(Consumable1Def, 3, 0);
+
+        if (auto Consumable2Def = Inventory::LoadWeapon(Consumables))
+            GiveItemBot(Consumable2Def, 3, 0);
+
+        if (auto TrapDef = Inventory::LoadWeapon(Traps))
+            GiveItemBot(TrapDef, 3, 0);
+
+        static UFortItemDefinition* WoodDef = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/WoodItemData.WoodItemData");
+        GiveItemBot(WoodDef, 500, 0);
+
+        static UFortItemDefinition* StoneDef = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/StoneItemData.StoneItemData");
+        GiveItemBot(StoneDef, 500, 0);
+
+        static UFortItemDefinition* MetalDef = StaticLoadObject<UFortItemDefinition>("/Game/Items/ResourcePickups/MetalItemData.MetalItemData");
+        GiveItemBot(MetalDef, 500, 0);
+    }
 };
 
 class BotsBTService_AIEvaluator {
@@ -893,6 +953,10 @@ public:
 
         if (bot->BotState == EBotState::Bus) {
             bot->Pawn->SetShield(0);
+            if (bot->bHasJumpedFromBus) {
+                bot->BotState = EBotState::Skydiving;
+                return;
+            }
 
             if (!bot->bHasThankedBusDriver && GameState->GamePhase == EAthenaGamePhase::Aircraft && Math->RandomBoolWithWeight(0.0005f))
             {
@@ -915,6 +979,8 @@ public:
                 bot->Pawn->BeginSkydiving(true);
                 bot->BotState = EBotState::Skydiving;
 
+                bot->bHasJumpedFromBus = true;
+
                 return;
             }
 
@@ -933,6 +999,8 @@ public:
                     bot->Pawn->K2_TeleportTo(GameState->GetAircraft(0)->K2_GetActorLocation(), {});
                     bot->Pawn->BeginSkydiving(true);
                     bot->BotState = EBotState::Skydiving;
+
+                    bot->bHasJumpedFromBus = true;
                 }
             }
 
@@ -1335,9 +1403,10 @@ namespace PlayerBots {
                 }
             }
 
-            if (bot->BotState > EBotState::Bus) {
-                BotsBTService_AIEvaluator Evaluator;
-                Evaluator.Tick(bot); // tick the evaluator after the bot is out of the bus so we dont mess up anything or cause potential crash
+            if (GameState->GamePhase > EAthenaGamePhase::Warmup) {
+                if (bot->BotState < EBotState::Bus && !bot->bHasJumpedFromBus) {
+                    bot->BotState == EBotState::Bus;
+                }
             }
 
             if (bot->BotState == EBotState::Warmup) {
@@ -1354,6 +1423,22 @@ namespace PlayerBots {
                 }
             }
             else if (bot->BotState == EBotState::Bus || bot->BotState == EBotState::Skydiving || bot->BotState == EBotState::Gliding) {
+                if (Globals::LateGame && UKismetMathLibrary::GetDefaultObj()->RandomBoolWithWeight(0.5f)) {
+                    if (bot->bHasJumpedFromBus) {
+                        bot->BotState = EBotState::LookingForPlayers;
+                        return;
+                    }
+
+                    bot->Pawn->K2_TeleportTo(GameState->GetAircraft(0)->K2_GetActorLocation(), {});
+                    bot->Pawn->BeginSkydiving(true);
+                    bot->GiveLategameLoadout();
+                    bot->BotState = EBotState::LookingForPlayers;
+
+                    bot->bHasJumpedFromBus = true;
+
+                    return;
+                }
+                
                 BotsBTService_AIDropZone DropZoneEv;
                 DropZoneEv.Tick(bot);
             }
@@ -1385,7 +1470,7 @@ namespace PlayerBots {
                         continue;
                     }
 
-                    if (Dist < 5000.f) {
+                    if (Dist < 3000.f) {
                         auto TestRot = Math->FindLookAtRotation(Nearest, BotLoc);
 
                         bot->PC->SetControlRotation(TestRot);
@@ -1497,6 +1582,9 @@ namespace PlayerBots {
                 
                 if (GameState && GameState->SafeZoneIndicator)
                 {
+                    if (Math->RandomBoolWithWeight(0.025f)) {
+                        bot->ForceStrafe(true);
+                    }
                     bot->PC->MoveToLocation(GameState->SafeZoneIndicator->NextCenter, GameState->SafeZoneIndicator->Radius, true, false, false, true, nullptr, true);
                 }
             }
