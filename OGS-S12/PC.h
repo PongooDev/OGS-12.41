@@ -68,6 +68,12 @@ namespace PC {
 			VendingMachinesArray.Free();
 		}
 
+		if (Globals::Arena)
+		{
+			GameState->EventTournamentRound = EEventTournamentRound::Arena;
+			GameState->OnRep_EventTournamentRound();
+		}
+
 		return ServerReadyToStartMatchOG(PC);
 	}
 
@@ -337,6 +343,82 @@ namespace PC {
 		}
 
 		return ClientOnPawnDiedOG(DeadPC, DeathReport);
+	}
+
+	void RebootingDelegate(ABuildingGameplayActorSpawnMachine* RebootVan)
+	{
+		if (!RebootVan->ResurrectLocation || RebootVan->PlayerIdsForResurrection.Num() <= 0)
+			return;
+		auto PC = GetPCFromId(RebootVan->PlayerIdsForResurrection[0]);
+		if (!PC)
+			return;
+
+		AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
+		FTransform Transform{};
+		Transform.Translation = RebootVan->K2_GetActorLocation() + FVector(0, 0, 2000);
+		AFortPlayerStateAthena* PlayerState = (AFortPlayerStateAthena*)PC->PlayerState;
+		APlayerPawn_Athena_C* NewPawn = (APlayerPawn_Athena_C*)GameMode->SpawnDefaultPawnAtTransform(PC, Transform);
+		if (!PlayerState)
+			return;
+		TWeakObjectPtr<AFortPlayerStart> WeakPlayerStart{};
+		WeakPlayerStart.ObjectIndex = RebootVan->ResurrectLocation->Index;
+		WeakPlayerStart.ObjectSerialNumber = UObject::GObjects->GetSerialByIdx(WeakPlayerStart.ObjectIndex);
+		PC->ResurrectionComponent->ResurrectionLocation = WeakPlayerStart;
+		PC->RespawnPlayerAfterDeath(false);
+		PC->ClientClearDeathNotification();
+		UWorld::GetWorld()->AuthorityGameMode->RestartPlayer(PC);
+		AFortPlayerPawnAthena* Pawn = Cast<AFortPlayerPawnAthena>(PC->Pawn);
+		if (!Pawn)
+		{
+			printf("Failed to spawn!\n");
+			RebootVan->OnResurrectionCompleted();
+			return;
+		}
+
+		Pawn->SetHealth(100);
+		Pawn->SetMaxHealth(100);
+		Pawn->SetMaxShield(100);
+		Pawn->SetShield(0);
+
+		static UFunction* OnPlayerPawnResurrected = RebootVan->Class->GetFunction(RebootVan->Class->GetName(), "OnPlayerPawnResurrected");
+		RebootVan->ProcessEvent(OnPlayerPawnResurrected, &Pawn);
+
+		AFortPlayerControllerAthena* Instigator = RebootVan->InstigatorPC.Get();
+		if (Instigator && Instigator->PlayerState) {
+			((AFortPlayerStateAthena*)Instigator->PlayerState)->RebootCounter++;
+			((AFortPlayerStateAthena*)Instigator->PlayerState)->OnRep_RebootCounter();
+			for (size_t i = 0; i < ((AFortPlayerStateAthena*)Instigator->PlayerState)->Spectators.SpectatorArray.Num(); i++)
+			{
+				auto& Spectator = ((AFortPlayerStateAthena*)Instigator->PlayerState)->Spectators.SpectatorArray[i];
+				if (Spectator.PlayerState == PlayerState)
+				{
+					((AFortPlayerStateAthena*)Instigator->PlayerState)->Spectators.SpectatorArray.Remove(i);
+					break;
+				}
+			}
+			((AFortPlayerStateAthena*)Instigator->PlayerState)->Spectators.MarkArrayDirty();
+		}
+		PlayerState->Spectators.SpectatorArray.Free();
+		PlayerState->Spectators.MarkArrayDirty();
+		PlayerState->SpectatingTarget = nullptr;
+		PlayerState->OnRep_SpectatingTarget();
+
+		static FName Loot_AthenaSCM = UKismetStringLibrary::Conv_StringToName(TEXT("Loot_AthenaSCM"));
+		static auto LootDrops = Looting::PickLootDrops(Loot_AthenaSCM, Cast<AFortGameStateAthena>(UWorld::GetWorld()->GameState)->WorldLevel);
+		for (auto& Drop : LootDrops)
+		{
+			Inventory::GiveItem(PC, Drop.ItemDefinition, Drop.Count, Drop.LoadedAmmo);
+		}
+
+		AddToAlivePlayers(GameMode, PC);
+		RebootVan->PlayerIdsForResurrection.Remove(0);
+		if (RebootVan->PlayerIdsForResurrection.Num() <= 0)
+		{
+			static UFunction* ResurrectComplete = StaticLoadObject<UFunction>("/Game/Athena/Items/EnvironmentalItems/SCMachine/BGA_Athena_SCMachine.BGA_Athena_SCMachine_C.OnPlayerPawnResurrected");
+			RebootVan->OnResurrectionCompleted();
+			RebootVan->OnPlayerPawnResurrected(NewPawn);
+			RebootVan->ProcessEvent(ResurrectComplete, &NewPawn);
+		}
 	}
 
 	inline void (*ServerAttemptInteractOG)(UFortControllerComponent_Interaction* Comp, AActor* ReceivingActor, UPrimitiveComponent* InteractComponent, ETInteractionType InteractType, UObject* OptionalData, EInteractionBeingAttempted InteractionBeingAttempted);
@@ -980,6 +1062,8 @@ namespace PC {
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x1C7, ServerPlayEmoteItem, nullptr);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x197f6d0), ServerPlaySquadQuickChatMessage, nullptr);
+
+		MH_CreateHook((LPVOID)(ImageBase + 0x1b6c232), RebootingDelegate, nullptr);
 
 		HookVTable(AFortPlayerStateAthena::StaticClass()->DefaultObject, 0xFF, ServerSetInAircraft, (PVOID*)&OrginalServerSetInAircraft);
 

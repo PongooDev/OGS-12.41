@@ -167,6 +167,9 @@
     <ClInclude Include="SDK\SDK\FortniteGame_classes.hpp" />
     <ClInclude Include="SDK\SDK\FortniteGame_parameters.hpp" />
     <ClInclude Include="SDK\SDK\FortniteGame_structs.hpp" />
+    <ClInclude Include="SDK\SDK\UMG_classes.hpp" />
+    <ClInclude Include="SDK\SDK\UMG_parameters.hpp" />
+    <ClInclude Include="SDK\SDK\UMG_structs.hpp" />
     <ClInclude Include="SDK\UnrealContainers.hpp" />
     <ClInclude Include="Tick.h" />
     <ClInclude Include="Vehicles.h" />
@@ -179,6 +182,7 @@
     <ClCompile Include="SDK\SDK\Engine_functions.cpp" />
     <ClCompile Include="SDK\SDK\FortniteGame_functions.cpp" />
     <ClCompile Include="SDK\SDK\GameplayAbilities_functions.cpp" />
+    <ClCompile Include="SDK\SDK\UMG_functions.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="SDK\NameCollisions.inl" />

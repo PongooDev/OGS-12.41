@@ -37,8 +37,11 @@ namespace GameMode {
 				else if (Globals::bEventEnabled) {
 					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Music/Playlist_Music_High.Playlist_Music_High");
 				}
+				else if (Globals::Arena) {
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Showdown/Playlist_ShowdownAlt_Solo.Playlist_ShowdownAlt_Solo");
+				}
 				else {
-					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Playlist_DefaultSolo.Playlist_DefaultSolo");
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Playlist_DefaultDuo.Playlist_DefaultDuo");
 				}
 				if (!Playlist) {
 					Log("Could not find playlist!");
@@ -100,6 +103,7 @@ namespace GameMode {
 				GameState->WorldLevel = Playlist->LootLevel;
 				GameMode->AISettings = Playlist->AISettings;
 				GameMode->bSpawnAllStuff = true;
+				GameState->DefaultRebootMachineHotfix = 1;
 
 				if (Globals::bEventEnabled) {
 					Log("Event is loaded!");

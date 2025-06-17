@@ -110,20 +110,6 @@ void Log(const std::string& msg)
 	std::cout << "[OGS]: " << msg << std::endl;
 }
 
-AFortPlayerControllerAthena* GetPCFromId(FUniqueNetIdRepl& ID)
-{
-	for (auto& PlayerState : UWorld::GetWorld()->GameState->PlayerArray)
-	{
-		auto PlayerStateAthena = Cast<AFortPlayerStateAthena>(PlayerState);
-		if (!PlayerStateAthena)
-			continue;
-		if (PlayerStateAthena->AreUniqueIDsIdentical(ID, PlayerState->UniqueId))
-			return Cast<AFortPlayerControllerAthena>(PlayerState->Owner);
-	}
-
-	return nullptr;
-}
-
 void HookVTable(void* Base, int Idx, void* Detour, void** OG)
 {
 	DWORD oldProtection;
@@ -519,6 +505,20 @@ int CountActorsWithName(FName TargetName, UClass* Class)
 			Count++;
 	}
 	return Count;
+}
+
+AFortPlayerControllerAthena* GetPCFromId(FUniqueNetIdRepl& ID)
+{
+	for (auto& PlayerState : UWorld::GetWorld()->GameState->PlayerArray)
+	{
+		auto PlayerStateAthena = Cast<AFortPlayerStateAthena>(PlayerState);
+		if (!PlayerStateAthena)
+			continue;
+		if (PlayerStateAthena->AreUniqueIDsIdentical(ID, PlayerState->UniqueId))
+			return Cast<AFortPlayerControllerAthena>(PlayerState->Owner);
+	}
+
+	return nullptr;
 }
 
 enum class EAccoladeEvent : uint8

@@ -180,8 +180,13 @@ ClassType* GetDefaultObjImpl()
 struct FUObjectItem final
 {
 public:
-	class UObject*                                Object;                                            // 0x0000(0x0008)(NOT AUTO-GENERATED PROPERTY)
-	uint8                                         Pad_8[0x10];                                       // 0x0008(0x0010)(Fixing Struct Size After Last Property [ Dumper-7 ])
+	//class UObject*                                Object;                                            // 0x0000(0x0008)(NOT AUTO-GENERATED PROPERTY)
+	//uint8                                         Pad_8[0x10];                                       // 0x0008(0x0010)(Fixing Struct Size After Last Property [ Dumper-7 ])
+
+	class UObject* Object;
+	int32 Flags;
+	int32 ClusterRootIndex;
+	int32 SerialNumber;
 };
 static_assert(alignof(FUObjectItem) == 0x000008, "Wrong alignment on FUObjectItem");
 static_assert(sizeof(FUObjectItem) == 0x000018, "Wrong size on FUObjectItem");
@@ -232,6 +237,20 @@ public:
 		if (!ChunkPtr) return nullptr;
 
 		return ChunkPtr[InChunkIdx].Object;
+	}
+
+	inline int GetSerialByIdx(const int32 Index) const
+	{
+		const int32 ChunkIndex = Index / ElementsPerChunk;
+		const int32 InChunkIdx = Index % ElementsPerChunk;
+
+		if (ChunkIndex >= NumChunks || Index >= NumElements)
+			return 0;
+
+		FUObjectItem* ChunkPtr = GetDecrytedObjPtr()[ChunkIndex];
+		if (!ChunkPtr) return 0;
+
+		return ChunkPtr[InChunkIdx].SerialNumber;
 	}
 };
 
