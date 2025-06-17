@@ -158,13 +158,13 @@ namespace PC {
 	{
 
 		Log("Pawn died");
-		DeadPC->bMarkedAlive = false;
 
 		auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 		auto GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
 		AFortPlayerStateAthena* DeadState = (AFortPlayerStateAthena*)DeadPC->PlayerState;
 		AFortPlayerPawnAthena* KillerPawn = (AFortPlayerPawnAthena*)DeathReport.KillerPawn;
 		AFortPlayerStateAthena* KillerState = (AFortPlayerStateAthena*)DeathReport.KillerPlayerState;
+		auto PlayerState = Cast<AFortPlayerStateAthena>(DeadPC->PlayerState);
 
 		if (DeadPC && bFirstEliminated) {
 			bFirstEliminated = true;
@@ -255,52 +255,67 @@ namespace PC {
 					}
 				}
 
-				DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
+				DeathInfo.bDBNO = false;
 				DeathInfo.bInitialized = true;
 				DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
 				DeathInfo.DeathTags = DeathReport.Tags;
 				DeathInfo.Downer = KillerState;
 				DeathInfo.Distance = (KillerPawn ? KillerPawn->GetDistanceTo(DeadPC->Pawn) : ((AFortPlayerPawnAthena*)DeadPC->Pawn)->LastFallDistance);
-				DeathInfo.FinisherOrDowner = KillerState;
+				PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
 				DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
 				DeadState->OnRep_DeathInfo();
-				DeadPC->RespawnPlayerAfterDeath(true);
+				//DeadPC->RespawnPlayerAfterDeath(true);
 			}
 
-			if (Won || !GameState->IsRespawningAllowed(DeadState))
+			bool AllDead = true;
+			for (auto Member : PlayerState->PlayerTeam->TeamMembers)
 			{
-				FAthenaRewardResult Result;
-				UFortPlayerControllerAthenaXPComponent* XPComponent = DeadPC->XPComponent;
-				Result.TotalBookXpGained = XPComponent->TotalXpEarned;
-				Result.TotalSeasonXpGained = XPComponent->TotalXpEarned;
-
-				DeadPC->ClientSendEndBattleRoyaleMatchForPlayer(true, Result);
-
-				FAthenaMatchStats Stats;
-				FAthenaMatchTeamStats TeamStats;
-
-				if (DeadState)
+				if (Member != DeadPC && ((AFortPlayerControllerAthena*)Member)->bMarkedAlive)
 				{
-					DeadState->Place = GameMode->AliveBots.Num() + GameMode->AlivePlayers.Num();
-					DeadState->OnRep_Place();
+					AllDead = false;
+					break;
 				}
+			}
 
-				for (size_t i = 0; i < 20; i++)
+			if (AllDead)
+			{
+				for (auto Member : PlayerState->PlayerTeam->TeamMembers)
 				{
-					Stats.Stats[i] = 0;
+					auto MemberPC = (AFortPlayerControllerAthena*)Member;
+
+					FAthenaRewardResult Result;
+					UFortPlayerControllerAthenaXPComponent* XPComponent = MemberPC->XPComponent;
+					Result.TotalBookXpGained = XPComponent->TotalXpEarned;
+					Result.TotalSeasonXpGained = XPComponent->TotalXpEarned;
+
+					DeadPC->ClientSendEndBattleRoyaleMatchForPlayer(true, Result);
+
+					FAthenaMatchStats Stats;
+					FAthenaMatchTeamStats TeamStats;
+
+					if (DeadState)
+					{
+						DeadState->Place = GameMode->AliveBots.Num() + GameMode->AlivePlayers.Num();
+						DeadState->OnRep_Place();
+					}
+
+					for (size_t i = 0; i < 20; i++)
+					{
+						Stats.Stats[i] = 0;
+					}
+
+					Stats.Stats[3] = DeadState->KillScore;
+
+					TeamStats.Place = DeadState->Place;
+					TeamStats.TotalPlayers = GameState->TotalPlayers;
+
+					DeadPC->ClientSendMatchStatsForPlayer(Stats);
+					DeadPC->ClientSendTeamStatsForPlayer(TeamStats);
+					FDeathInfo& DeathInfo = DeadState->DeathInfo;
+
+					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon , (uint8)PlayerState->DeathInfo.DeathCause, 0);
+					DeadPC->bMarkedAlive = false;
 				}
-
-				Stats.Stats[3] = DeadState->KillScore;
-
-				TeamStats.Place = DeadState->Place;
-				TeamStats.TotalPlayers = GameState->TotalPlayers;
-
-				DeadPC->ClientSendMatchStatsForPlayer(Stats);
-				DeadPC->ClientSendTeamStatsForPlayer(TeamStats);
-				FDeathInfo& DeathInfo = DeadState->DeathInfo;
-
-				RemoveFromAlivePlayers(GameMode, DeadPC, (KillerState == DeadState ? nullptr : KillerState), KillerPawn, DeathReport.KillerWeapon ? DeathReport.KillerWeapon : nullptr, DeadState ? DeathInfo.DeathCause : EDeathCause::Rifle, 0);
-
 				if (KillerState)
 				{
 					if (KillerState->Place == 1)
@@ -626,6 +641,7 @@ namespace PC {
 				Inventory::RemoveItem(PC, Def, 1);
 			}*/
 			Quests::GiveAccolade(PC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_079_OpenVault.AccoladeId_079_OpenVault"));
+
 		}
 	}
 
@@ -967,6 +983,8 @@ namespace PC {
 
 		PC->MyFortPawn->EquipWeaponDefinition((UFortWeaponItemDefinition*)SwappingItemDef, SwappingItemEntry->ItemGuid);
 	}
+
+
 
 	void ServerReturnToMainMenu(AFortPlayerControllerAthena* PC)
 	{

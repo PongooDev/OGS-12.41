@@ -52,7 +52,7 @@ static void (*BotManagerSetup)(__int64 BotManaager, __int64 Pawn, __int64 Behavi
 
 static char(__fastcall* RegisterComponentWithWorld)(UObject* Component, UObject* World) = decltype(RegisterComponentWithWorld)(ImageBase + 0x3FF94E0);
 
-static void(*RemoveFromAlivePlayers)(AFortGameModeAthena*, AFortPlayerControllerAthena*, APlayerState*, AFortPlayerPawn*, UFortWeaponItemDefinition*, EDeathCause, char) = decltype(RemoveFromAlivePlayers)(ImageBase + 0x18ECBB0);
+static void(*RemoveFromAlivePlayers)(AFortGameModeAthena*, AFortPlayerControllerAthena*, APlayerState*, AFortPlayerPawn*, UFortWeaponItemDefinition*, uint8_t DeathCause, char) = decltype(RemoveFromAlivePlayers)(ImageBase + 0x18ECBB0);
 static void (*AddToAlivePlayers)(AFortGameModeAthena* GameMode, AFortPlayerControllerAthena* Player) = decltype(AddToAlivePlayers)(ImageBase + 0x18c35b0);
 
 static void* (*StaticFindObjectOG)(UClass*, UObject* Package, const wchar_t* OrigInName, bool ExactClass) = decltype(StaticFindObjectOG)(ImageBase + 0x2E1C4B0);

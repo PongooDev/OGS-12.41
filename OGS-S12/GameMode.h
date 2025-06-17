@@ -66,9 +66,9 @@ namespace GameMode {
 				if (MaxPlayersOnTeam > 1)
 				{
 					GameMode->bDBNOEnabled = true;
-					GameMode->bAlwaysDBNO = true;
+					GameState->bDBNOEnabledForGameMode = true;
 					GameState->bDBNODeathEnabled = true;
-					GameState->SetIsDBNODeathEnabled(true);
+					GameMode->bAllowSpectateAfterDeath = true;
 				}
 
 				GameState->CurrentPlaylistInfo.BasePlaylist = Playlist;
@@ -391,6 +391,7 @@ namespace GameMode {
 
 		for (auto PlayerBot : PlayerBotArray)
 		{
+
 			if (!Globals::LateGame) {
 				auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
 				auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
@@ -426,7 +427,7 @@ namespace GameMode {
 		Log("OnAircraftExitedDropZone!");
 
 		if (Globals::bBotsEnabled) { // kick all bots out of the bus
-			/*for (auto PlayerBot : PlayerBotArray) {
+			for (auto PlayerBot : PlayerBotArray) {
 				if (PlayerBot->BotState == EBotState::Bus) {
 					AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
@@ -435,7 +436,7 @@ namespace GameMode {
 					PlayerBot->BotState = EBotState::Skydiving;
 					Log("Kicked a bot!");
 				}
-			}*/
+			}
 		}
 
 		if (Globals::bEventEnabled)
