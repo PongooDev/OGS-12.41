@@ -1060,98 +1060,101 @@ public:
 public:
     void Tick(PlayerBot* bot) {
         if (bot->TargetLootable) {
+            if (bot->HasGun()) {
+                bot->BotState = EBotState::LookingForPlayers;
+                return;
+            }
             FVector BotLoc = bot->Pawn->K2_GetActorLocation();
             if (!BotLoc.IsZero()) {
-                if (bot->HasGun()) {
-                    bot->BotState = EBotState::LookingForPlayers;
-                    return;
-                }
-            }
-            float Dist = Math->Vector_Distance(BotLoc, bot->TargetLootable->K2_GetActorLocation());
-
-            auto BotPos = bot->Pawn->K2_GetActorLocation();
-            auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
-
-            bot->PC->SetControlRotation(TestRot);
-            bot->PC->K2_SetActorRotation(TestRot, true);
-            bot->LookAt(bot->TargetLootable);
-
-            float CurrentTime = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
-
-            if (bot->TargetLootable) {
-                FVector BotLoc = bot->Pawn->K2_GetActorLocation();
                 float Dist = Math->Vector_Distance(BotLoc, bot->TargetLootable->K2_GetActorLocation());
 
-                if (bot->LootTargetStartTime == 0.f) {
-                    bot->LootTargetStartTime = CurrentTime;
+                auto BotPos = bot->Pawn->K2_GetActorLocation();
+                auto TestRot = Math->FindLookAtRotation(BotPos, bot->TargetLootable->K2_GetActorLocation());
+
+                bot->PC->SetControlRotation(TestRot);
+                bot->PC->K2_SetActorRotation(TestRot, true);
+                bot->LookAt(bot->TargetLootable);
+
+                float CurrentTime = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
+
+                if (bot->TargetLootable) {
+                    FVector BotLoc = bot->Pawn->K2_GetActorLocation();
+                    float Dist = Math->Vector_Distance(BotLoc, bot->TargetLootable->K2_GetActorLocation());
+
+                    if (bot->LootTargetStartTime == 0.f) {
+                        bot->LootTargetStartTime = CurrentTime;
+                        bot->LastLootTargetDistance = Dist;
+                    }
+
+                    float Elapsed = CurrentTime - bot->LootTargetStartTime;
+
+                    // if the bot is not getting closer or stuck for more than 8 seconds then we should try go for another lootable
+                    if ((Elapsed > 8.f && Dist > bot->LastLootTargetDistance - 100.f)) {
+                        if (Math->RandomBool()) {
+                            bot->Pawn->K2_TeleportTo(bot->TargetLootable->K2_GetActorLocation(), {});
+                        }
+                        else {
+                            bot->TargetLootable = nullptr;
+                            bot->LootTargetStartTime = 0.f;
+                        }
+                        return;
+                    }
+
+                    if (Dist < 300.f) {
+                        bot->LootTargetStartTime = 0.f;
+                    }
+
                     bot->LastLootTargetDistance = Dist;
                 }
 
-                float Elapsed = CurrentTime - bot->LootTargetStartTime;
-
-                // if the bot is not getting closer or stuck for more than 8 seconds then we should try go for another lootable
-                if ((Elapsed > 8.f && Dist > bot->LastLootTargetDistance - 100.f)) {
-                    if (Math->RandomBool()) {
-                        bot->Pawn->K2_TeleportTo(bot->TargetLootable->K2_GetActorLocation(), {});
-                    }
-                    else {
-                        bot->TargetLootable = nullptr;
-                        bot->LootTargetStartTime = 0.f;
-                    }
-                    return;
-                }
-
                 if (Dist < 300.f) {
-                    bot->LootTargetStartTime = 0.f;
-                }
-
-                bot->LastLootTargetDistance = Dist;
-            }
-
-            if (Dist < 300.f) {
-                bot->PC->StopMovement();
-                bot->Pawn->PawnStopFire(0);
-                if (!bot->TimeToNextAction || !bot->Pawn->bStartedInteractSearch && bot->TargetLootableType == ELootableType::Chest) {
-                    bot->TimeToNextAction = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
-                    bot->Pawn->bStartedInteractSearch = true;
-                    bot->Pawn->OnRep_StartedInteractSearch();
-                }
-                else if (UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld()) - bot->TimeToNextAction >= 1.5f && bot->TargetLootableType == ELootableType::Chest) {
-                    Looting::SpawnLoot((ABuildingContainer*)bot->TargetLootable);
-                    bot->TargetLootable->bHidden = true;
-                    bot->TargetLootable = nullptr;
-                    AFortPickup* Pickup = bot->FindNearestPickup();
-                    if (Pickup)
-                    {
-                        bot->PickupAllItemsInRange();
-                        bot->SimpleSwitchToWeapon();
+                    bot->PC->StopMovement();
+                    bot->Pawn->PawnStopFire(0);
+                    if (!bot->TimeToNextAction || !bot->Pawn->bStartedInteractSearch && bot->TargetLootableType == ELootableType::Chest) {
+                        bot->TimeToNextAction = UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld());
+                        bot->Pawn->bStartedInteractSearch = true;
+                        bot->Pawn->OnRep_StartedInteractSearch();
                     }
+                    else if (UGameplayStatics::GetDefaultObj()->GetTimeSeconds(UWorld::GetWorld()) - bot->TimeToNextAction >= 1.5f && bot->TargetLootableType == ELootableType::Chest) {
+                        Looting::SpawnLoot((ABuildingContainer*)bot->TargetLootable);
+                        bot->TargetLootable->bHidden = true;
+                        bot->TargetLootable = nullptr;
+                        AFortPickup* Pickup = bot->FindNearestPickup();
+                        if (Pickup)
+                        {
+                            bot->PickupAllItemsInRange();
+                            bot->SimpleSwitchToWeapon();
+                        }
 
-                    bot->Pawn->bStartedInteractSearch = false;
-                    bot->Pawn->OnRep_StartedInteractSearch();
-                    bot->TimeToNextAction = 0;
-                    bot->BotState = EBotState::LookingForPlayers;
-                }
-                else if (bot->TargetLootableType == ELootableType::Pickup) {
-                    //bot->PickupAllItemsInRange(400.f);
-                    AFortPickup* Pickup = bot->FindNearestPickup();
-                    if (Pickup)
-                    {
-                        bot->Pickup(Pickup);
+                        bot->Pawn->bStartedInteractSearch = false;
+                        bot->Pawn->OnRep_StartedInteractSearch();
+                        bot->TimeToNextAction = 0;
+                        bot->BotState = EBotState::LookingForPlayers;
                     }
-                    bot->TimeToNextAction = 0;
-                    bot->BotState = EBotState::LookingForPlayers;
+                    else if (bot->TargetLootableType == ELootableType::Pickup) {
+                        //bot->PickupAllItemsInRange(400.f);
+                        AFortPickup* Pickup = bot->FindNearestPickup();
+                        if (Pickup)
+                        {
+                            bot->Pickup(Pickup);
+                        }
+                        bot->TimeToNextAction = 0;
+                        bot->BotState = EBotState::LookingForPlayers;
+                    }
+                }
+                else if (Dist < 2000.f) {
+                    bot->Pawn->PawnStartFire(0);
+                    bot->PC->MoveToActor(bot->TargetLootable, 50, true, false, true, nullptr, true);
+                    //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
+                }
+                else {
+                    bot->PC->MoveToActor(bot->TargetLootable, 50, true, false, true, nullptr, true);
+                    //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
                 }
             }
-            else if (Dist < 2000.f) {
-                bot->Pawn->PawnStartFire(0);
-                bot->PC->MoveToActor(bot->TargetLootable, 50, true, false, true, nullptr, true);
-                //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
-            }
-            else {
-                bot->PC->MoveToActor(bot->TargetLootable, 50, true, false, true, nullptr, true);
-                //bot->Pawn->AddMovementInput(bot->Pawn->GetActorForwardVector(), 1.1f, true);
-            }
+        }
+        else {
+            //Log("No targetlootable dummy!");
         }
     }
 };
@@ -1403,10 +1406,9 @@ namespace PlayerBots {
                 }
             }
 
-            if (GameState->GamePhase > EAthenaGamePhase::Warmup) {
-                if (bot->BotState < EBotState::Bus && !bot->bHasJumpedFromBus) {
-                    bot->BotState == EBotState::Bus;
-                }
+            if (bot->BotState > EBotState::Bus) {
+                BotsBTService_AIEvaluator Evaluator;
+                Evaluator.Tick(bot); // tick the evaluator after the bot is out of the bus so we dont mess up anything or cause potential crash
             }
 
             if (bot->BotState == EBotState::Warmup) {
