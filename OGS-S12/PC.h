@@ -255,7 +255,7 @@ namespace PC {
 					}
 				}
 
-				DeathInfo.bDBNO = false;
+				DeathInfo.bDBNO = DeadPC->MyFortPawn->bIsDBNO;
 				DeathInfo.bInitialized = true;
 				DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
 				DeathInfo.DeathTags = DeathReport.Tags;
@@ -264,7 +264,12 @@ namespace PC {
 				PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
 				DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
 				DeadState->OnRep_DeathInfo();
-				//DeadPC->RespawnPlayerAfterDeath(true);
+				if (DeadPC->MyFortPawn->bIsDBNO)
+				{
+					DeadPC->RespawnPlayerAfterDeath(true);
+				}
+				RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
+				DeadPC->bMarkedAlive = false;
 			}
 
 			bool AllDead = true;
@@ -313,9 +318,8 @@ namespace PC {
 					DeadPC->ClientSendTeamStatsForPlayer(TeamStats);
 					FDeathInfo& DeathInfo = DeadState->DeathInfo;
 
-					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon , (uint8)PlayerState->DeathInfo.DeathCause, 0);
-					DeadPC->bMarkedAlive = false;
 				}
+
 				if (KillerState)
 				{
 					if (KillerState->Place == 1)
