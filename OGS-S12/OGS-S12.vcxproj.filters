@@ -120,6 +120,15 @@
     <ClInclude Include="LateGameLoot.h">
       <Filter>Resources</Filter>
     </ClInclude>
+    <ClInclude Include="SDK\SDK\UMG_classes.hpp">
+      <Filter>SDK\SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="SDK\SDK\UMG_parameters.hpp">
+      <Filter>SDK\SDK</Filter>
+    </ClInclude>
+    <ClInclude Include="SDK\SDK\UMG_structs.hpp">
+      <Filter>SDK\SDK</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -141,6 +150,9 @@
       <Filter>SDK\SDK</Filter>
     </ClCompile>
     <ClCompile Include="SDK\SDK\GameplayAbilities_functions.cpp">
+      <Filter>SDK\SDK</Filter>
+    </ClCompile>
+    <ClCompile Include="SDK\SDK\UMG_functions.cpp">
       <Filter>SDK\SDK</Filter>
     </ClCompile>
   </ItemGroup>
