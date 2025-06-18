@@ -1013,6 +1013,12 @@ namespace PC {
 			}
 			Log("Spawned Bot!");
 		}
+		else if (Command == "SpawnFriendlyBot") {
+			if (GameState->GamePhase > EAthenaGamePhase::Warmup) {
+				PlayerBots::SpawnPlayerBots(PC->Pawn, EBotState::Landed, PC);
+			}
+			Log("Spawned A Friendly Bot!");
+		}
 		else if (Command.contains("SpawnAmountBots ")) {
 			std::vector<std::string> args = TextManipUtils::SplitWhitespace(Command);
 			int AmountToSpawn = std::stoi(args[1]);

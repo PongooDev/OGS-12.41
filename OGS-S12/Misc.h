@@ -74,6 +74,23 @@ namespace Misc {
         GameState->SafeZonesStartTime = 1;
     }
 
+    uint8 NextIdx = 3;
+    int CurrentPlayersOnTeam = 0;
+    int MaxPlayersOnTeam = 1;
+
+    inline __int64 PickTeam(__int64 a1, unsigned __int8 a2, __int64 a3)
+    {
+        uint8 Ret = NextIdx;
+        CurrentPlayersOnTeam++;
+
+        if (CurrentPlayersOnTeam == MaxPlayersOnTeam)
+        {
+            NextIdx++;
+            CurrentPlayersOnTeam = 0;
+        }
+        return Ret;
+    };
+
     void Hook() {
         MH_CreateHook((LPVOID)(ImageBase + 0x2D95E00), False, nullptr); // collectgarbage
         MH_CreateHook((LPVOID)(ImageBase + 0x4155600), KickPlayer, (LPVOID*)&KickPlayerOG); // Kickplayer
@@ -89,6 +106,8 @@ namespace Misc {
         MH_CreateHook((LPVOID)(ImageBase + 0x2d95dc0), nullFunc, nullptr);
 
         MH_CreateHook((LPVOID)(ImageBase + 0x7F0220), K2_DestroyActor, (LPVOID*)&K2_DestroyActorOG);
+
+        MH_CreateHook((LPVOID)(ImageBase + 0x18E6B20), PickTeam, nullptr);
 
         Log("Misc Hooked!");
     }

@@ -2,19 +2,16 @@
 #include "framework.h"
 #include "Inventory.h"
 #include "Abilities.h"
-#include "Bots.h"
 #include "Quests.h"
 #include "Net.h"
+#include "Bots.h"
+#include "Misc.h"
 
 namespace GameMode {
 	namespace Event {
 		static inline UClass* Starter;
 		static inline UObject* JerkyLoader;
 	}
-
-	uint8 NextIdx = 3;
-	int CurrentPlayersOnTeam = 0;
-	int MaxPlayersOnTeam = 1;
 
 	inline bool (*ReadyToStartMatchOG)(AFortGameModeAthena* GameMode);
 	inline bool ReadyToStartMatch(AFortGameModeAthena* GameMode)
@@ -60,10 +57,10 @@ namespace GameMode {
 				GameMode->CurrentPlaylistName = Playlist->PlaylistName;
 				GameMode->WarmupRequiredPlayerCount = 1;
 
-				NextIdx = Playlist->DefaultFirstTeam;
-				MaxPlayersOnTeam = Playlist->MaxSquadSize;
+				Misc::NextIdx = Playlist->DefaultFirstTeam;
+				Misc::MaxPlayersOnTeam = Playlist->MaxSquadSize;
 
-				if (MaxPlayersOnTeam > 1)
+				if (Misc::MaxPlayersOnTeam > 1)
 				{
 					GameMode->bDBNOEnabled = true;
 					GameState->bDBNOEnabledForGameMode = true;
@@ -365,19 +362,6 @@ namespace GameMode {
 		//return (AFortPlayerPawnAthena*)GameMode->SpawnDefaultPawnAtTransform(Player, Transform);
 	}
 
-	inline __int64 PickTeam(__int64 a1, unsigned __int8 a2, __int64 a3)
-	{
-		uint8 Ret = NextIdx;
-		CurrentPlayersOnTeam++;
-
-		if (CurrentPlayersOnTeam == MaxPlayersOnTeam)
-		{
-			NextIdx++;
-			CurrentPlayersOnTeam = 0;
-		}
-		return Ret;
-	};
-
 	static __int64 (*StartAircraftPhaseOG)(AFortGameModeAthena* GameMode, char a2) = nullptr;
 	__int64 StartAircraftPhase(AFortGameModeAthena* GameMode, char a2)
 	{
@@ -549,8 +533,6 @@ namespace GameMode {
 		MH_CreateHook((LPVOID)(ImageBase + 0x4640A30), ReadyToStartMatch, (LPVOID*)&ReadyToStartMatchOG);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x18F6250), SpawnDefaultPawnFor, nullptr);
-
-		MH_CreateHook((LPVOID)(ImageBase + 0x18E6B20), PickTeam, nullptr);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x18F9BB0), StartAircraftPhase, (LPVOID*)&StartAircraftPhaseOG);
 

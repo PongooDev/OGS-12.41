@@ -4,6 +4,7 @@
 #include "POI_Locs.h"
 
 #include "Quests.h"
+#include "Misc.h"
 
 static std::vector<UAthenaCharacterItemDefinition*> CIDs{};
 static std::vector<UAthenaPickaxeItemDefinition*> Pickaxes{};
@@ -681,7 +682,10 @@ public:
         {
             if (!NearestPlayer || (GameMode->AlivePlayers[i]->Pawn && GameMode->AlivePlayers[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
             {
-                NearestPlayer = GameMode->AlivePlayers[i]->Pawn;
+                AFortPlayerStateAthena* PS = (AFortPlayerStateAthena*)GameMode->AlivePlayers[i]->PlayerState;
+                if (PS->TeamIndex != PlayerState->TeamIndex) {
+                    NearestPlayer = GameMode->AlivePlayers[i]->Pawn;
+                }
             }
         }
 
@@ -691,7 +695,10 @@ public:
             {
                 if (!NearestPlayer || (GameMode->AliveBots[i]->Pawn && GameMode->AliveBots[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
                 {
-                    NearestPlayer = GameMode->AliveBots[i]->Pawn;
+                    AFortPlayerStateAthena* PS = (AFortPlayerStateAthena*)GameMode->AlivePlayers[i]->PlayerState;
+                    if (PS->TeamIndex != PlayerState->TeamIndex) {
+                        NearestPlayer = GameMode->AliveBots[i]->Pawn;
+                    }
                 }
             }
         }
@@ -715,7 +722,10 @@ public:
         {
             if (!NearestPlayer || (GameMode->AlivePlayers[i]->Pawn && GameMode->AlivePlayers[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
             {
-                NearestPlayer = GameMode->AlivePlayers[i]->Pawn;
+                AFortPlayerStateAthena* PS = (AFortPlayerStateAthena*)GameMode->AlivePlayers[i]->PlayerState;
+                if (PS->TeamIndex != PlayerState->TeamIndex) {
+                    NearestPlayer = GameMode->AlivePlayers[i]->Pawn;
+                }
             }
         }
 
@@ -725,7 +735,10 @@ public:
             {
                 if (!NearestPlayer || (GameMode->AliveBots[i]->Pawn && GameMode->AliveBots[i]->Pawn->GetDistanceTo(Pawn) < NearestPlayer->GetDistanceTo(Pawn)))
                 {
-                    NearestPlayer = GameMode->AliveBots[i]->Pawn;
+                    AFortPlayerStateAthena* PS = (AFortPlayerStateAthena*)GameMode->AliveBots[i]->PlayerState;
+                    if (PS->TeamIndex != PlayerState->TeamIndex) {
+                        NearestPlayer = GameMode->AliveBots[i]->Pawn;
+                    }
                 }
             }
         }
@@ -833,8 +846,8 @@ public:
         FVector Vel = bot->Pawn->GetVelocity();
         float Speed = sqrtf(Vel.X * Vel.X + Vel.Y * Vel.Y);
 
-        if (bot->tick_counter % 30 == 0) {
-            // Lets update the reservation every second because its cleaner
+        if (bot->tick_counter % 60 == 0) {
+            // Lets update the reservation every 2 seconds because its cleaner
             AActor* NearestChest = bot->FindNearestChest();
             AActor* NearestPickup = (AActor*)bot->FindNearestPickup();
             if (!NearestChest || !NearestPickup) {}
@@ -1174,10 +1187,12 @@ namespace PlayerBots {
         }
     }
 
-    void SpawnPlayerBots(AActor* SpawnLocator, EBotState StartingState = EBotState::Warmup)
+    void SpawnPlayerBots(AActor* SpawnLocator, EBotState StartingState = EBotState::Warmup, AFortPlayerControllerAthena* TeamPC = nullptr)
     {
         if (!Globals::bBotsEnabled)
             return;
+
+        auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
         static auto BotBP = StaticLoadObject<UClass>("/Game/Athena/AI/Phoebe/BP_PlayerPawn_Athena_Phoebe.BP_PlayerPawn_Athena_Phoebe_C");
         static UBehaviorTree* BehaviorTree = StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/Phoebe/BehaviorTrees/BT_Phoebe.BT_Phoebe");
@@ -1374,6 +1389,67 @@ namespace PlayerBots {
         bot->Pawn->SetShield(0);
 
         bot->BotState = StartingState;
+
+        if (TeamPC) {
+            AFortPlayerStateAthena* TeamPS = (AFortPlayerStateAthena*)TeamPC->PlayerState;
+
+            uint8 OldTeamIdx = bot->PlayerState->TeamIndex;
+
+            bot->PlayerState->bIsABot = false;
+
+            bot->PlayerState->TeamIndex = TeamPS->TeamIndex;
+            bot->PlayerState->SquadId = TeamPS->SquadId;
+            bot->PlayerState->OnRep_TeamIndex(OldTeamIdx);
+            bot->PlayerState->OnRep_SquadId();
+
+            TeamPS->PlayerTeam->TeamMembers.Add(bot->PC);
+            bot->PlayerState->PlayerTeam = TeamPS->PlayerTeam;
+
+            bot->PlayerState->OnRep_PlayerTeam();
+            TeamPS->OnRep_PlayerTeam();
+
+            bot->PlayerState->bIsABot = true;
+        }
+        else {
+            if (Globals::bAllowBotsToBeOnPlayerTeam) {
+                uint8 TeamIdx = Misc::PickTeam(0, 0, 0);
+                AFortTeamInfo* Team = GameState->Teams[TeamIdx];
+                if (Team) {
+                    bot->PlayerState->bIsABot = false;
+
+                    uint8 OldTeamIdx = bot->PlayerState->TeamIndex;
+                    AFortPlayerStateAthena* TeamPS = nullptr;
+                    if (Team->TeamMembers.Num() > 0 && Team->TeamMembers[0]) {
+                        TeamPS = (AFortPlayerStateAthena*)Team->TeamMembers[0]->PlayerState;
+                    }
+                    if (TeamPS) {
+                        bot->PlayerState->SquadId = TeamPS->SquadId;
+                    }
+
+                    bot->PlayerState->TeamIndex = TeamIdx;
+                    bot->PlayerState->OnRep_TeamIndex(OldTeamIdx);
+                    bot->PlayerState->OnRep_SquadId();
+
+                    Team->TeamMembers.Add(bot->PC);
+                    bot->PlayerState->PlayerTeam = Team;
+
+                    bot->PlayerState->OnRep_PlayerTeam();
+
+                    bot->PlayerState->bIsABot = true;
+                }
+            }
+        }
+
+        FGameMemberInfo Member;
+        Member.MostRecentArrayReplicationKey = -1;
+        Member.ReplicationID = -1;
+        Member.ReplicationKey = -1;
+        Member.TeamIndex = bot->PlayerState->TeamIndex;
+        Member.SquadId = bot->PlayerState->SquadId;
+        Member.MemberUniqueId = bot->PlayerState->UniqueId;
+
+        GameState->GameMemberInfoArray.Members.Add(Member);
+        GameState->GameMemberInfoArray.MarkItemDirty(Member);
 
         PlayerBotArray.push_back(bot); // gotta do this so we can tick them all
         //Log("Bot Spawned With DisplayName: " + bot->DisplayName.ToString());
