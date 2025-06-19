@@ -166,9 +166,10 @@ namespace PC {
 		AFortPlayerStateAthena* KillerState = (AFortPlayerStateAthena*)DeathReport.KillerPlayerState;
 		auto PlayerState = Cast<AFortPlayerStateAthena>(DeadPC->PlayerState);
 
-		if (DeadPC && bFirstEliminated) {
+		if (DeadPC && !bFirstEliminated) {
 			bFirstEliminated = true;
-			Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_First_Death.AccoladeID_First_Death"));
+			// Broken
+			//Quests::GiveAccolade((AFortPlayerControllerAthena*)KillerState->Owner, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeID_First_Death.AccoladeID_First_Death"));
 		}
 
 		static bool Won = false;
@@ -317,46 +318,45 @@ namespace PC {
 					DeadPC->ClientSendMatchStatsForPlayer(Stats);
 					DeadPC->ClientSendTeamStatsForPlayer(TeamStats);
 					FDeathInfo& DeathInfo = DeadState->DeathInfo;
-
 				}
+			}
 
-				if (KillerState)
+			if (KillerState)
+			{
+				if (KillerState->Place == 1)
 				{
-					if (KillerState->Place == 1)
+					if (DeathReport.KillerWeapon)
 					{
-						if (DeathReport.KillerWeapon)
-						{
-							((AFortPlayerControllerAthena*)KillerState->Owner)->PlayWinEffects(KillerPawn, DeathReport.KillerWeapon, EDeathCause::Rifle, false);
-							((AFortPlayerControllerAthena*)KillerState->Owner)->ClientNotifyWon(KillerPawn, DeathReport.KillerWeapon, EDeathCause::Rifle);
-						}
-
-						FAthenaRewardResult Result;
-						AFortPlayerControllerAthena* KillerPC = (AFortPlayerControllerAthena*)KillerState->GetOwner();
-						KillerPC->ClientSendEndBattleRoyaleMatchForPlayer(true, Result);
-
-						FAthenaMatchStats Stats;
-						FAthenaMatchTeamStats TeamStats;
-
-						for (size_t i = 0; i < 20; i++)
-						{
-							Stats.Stats[i] = 0;
-						}
-
-						Stats.Stats[3] = KillerState->KillScore;
-
-						TeamStats.Place = 1;
-						TeamStats.TotalPlayers = GameState->TotalPlayers;
-
-						KillerPC->ClientSendMatchStatsForPlayer(Stats);
-						KillerPC->ClientSendTeamStatsForPlayer(TeamStats);
-
-						GameState->WinningPlayerState = KillerState;
-						GameState->WinningTeam = KillerState->TeamIndex;
-						GameState->OnRep_WinningPlayerState();
-						GameState->OnRep_WinningTeam();
-
-						Quests::GiveAccolade(KillerPC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_001_Victory.AccoladeId_001_Victory"));
+						((AFortPlayerControllerAthena*)KillerState->Owner)->PlayWinEffects(KillerPawn, DeathReport.KillerWeapon, EDeathCause::Rifle, false);
+						((AFortPlayerControllerAthena*)KillerState->Owner)->ClientNotifyWon(KillerPawn, DeathReport.KillerWeapon, EDeathCause::Rifle);
 					}
+
+					FAthenaRewardResult Result;
+					AFortPlayerControllerAthena* KillerPC = (AFortPlayerControllerAthena*)KillerState->GetOwner();
+					KillerPC->ClientSendEndBattleRoyaleMatchForPlayer(true, Result);
+
+					FAthenaMatchStats Stats;
+					FAthenaMatchTeamStats TeamStats;
+
+					for (size_t i = 0; i < 20; i++)
+					{
+						Stats.Stats[i] = 0;
+					}
+
+					Stats.Stats[3] = KillerState->KillScore;
+
+					TeamStats.Place = 1;
+					TeamStats.TotalPlayers = GameState->TotalPlayers;
+
+					KillerPC->ClientSendMatchStatsForPlayer(Stats);
+					KillerPC->ClientSendTeamStatsForPlayer(TeamStats);
+
+					GameState->WinningPlayerState = KillerState;
+					GameState->WinningTeam = KillerState->TeamIndex;
+					GameState->OnRep_WinningPlayerState();
+					GameState->OnRep_WinningTeam();
+
+					Quests::GiveAccolade(KillerPC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_001_Victory.AccoladeId_001_Victory"));
 				}
 			}
 		}
