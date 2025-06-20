@@ -194,15 +194,15 @@ namespace Bots {
 		PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
 
 		PC->BehaviorTree = BehaviorTree;
-		if (Globals::bUseLegacyAI_MANG) {
+		/*if (Globals::bUseLegacyAI_MANG) {
 			if (RunBehaviorTree(PC, StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2"))) {
 				Log("Hi!");
 			}
 			else {
 				Log("Bye!");
 			}
-		}
-		PC->BlueprintOnBehaviorTreeStarted();
+			PC->BlueprintOnBehaviorTreeStarted();
+		}*/
 
 		static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
 		static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));

@@ -17,7 +17,7 @@ namespace Globals {
 	bool Arena = false;
 
 	int MaxBotsToSpawn = 100;
-	int MinPlayersForEarlyStart = 2;
+	int MinPlayersForEarlyStart = 95;
 
 	bool bAllowBotsToBeOnPlayerTeam = true;
 }

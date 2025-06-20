@@ -986,7 +986,7 @@ public:
             FVector DropTarget = bot->TargetDropZone;
             DropTarget.Z = BusLocation.Z;
 
-            if (GameState->GamePhase == EAthenaGamePhase::SafeZones) {
+            if (GameState->GamePhase > EAthenaGamePhase::Aircraft) {
                 Log("Force Jump");
                 bot->Pawn->K2_TeleportTo(DropTarget, {});
                 bot->Pawn->BeginSkydiving(true);
@@ -1050,7 +1050,7 @@ public:
 
             FVector Vel = bot->Pawn->GetVelocity();
             float Speed = Vel.Z;
-            if (Speed == 0.f) {
+            if (Speed == 0.f || bot->Pawn->bIsInWaterVolume) {
                 bot->BotState = EBotState::Landed;
             }
 
