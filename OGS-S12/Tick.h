@@ -167,7 +167,7 @@ namespace Tick {
 
 		if (Globals::bBossesEnabled && !Globals::bEventEnabled && GameState->GamePhase > EAthenaGamePhase::Warmup)
 		{
-			//Bosses::TickBots(DeltaTime);
+			Bosses::TickBots(DeltaTime);
 		}
 
 		if (Globals::bBotsEnabled && !Globals::bEventEnabled) {
