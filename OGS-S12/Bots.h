@@ -5,6 +5,9 @@
 #include "Bosses.h"
 #include "PlayerBots.h"
 
+#include "BehaviourTree_System.h"
+#include "BT_MANG2.h"
+
 namespace Bots {
 	void StartTree(UBehaviorTreeComponent* BTComp, UBehaviorTree* BTAsset, EBTExecutionMode::Type Mode = EBTExecutionMode::Looped)
 	{
@@ -189,11 +192,13 @@ namespace Bots {
 		PC->OnUsingBlackBoard(PC->Blackboard, Blackboard);
 
 		PC->BehaviorTree = BehaviorTree;
-		if (RunBehaviorTree(PC, StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2"))) {
-			Log("Hi!");
-		}
-		else {
-			Log("Bye!");
+		if (Globals::bUseLegacyAI_MANG) {
+			if (RunBehaviorTree(PC, StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2"))) {
+				Log("Hi!");
+			}
+			else {
+				Log("Bye!");
+			}
 		}
 		PC->BlueprintOnBehaviorTreeStarted();
 
@@ -202,7 +207,7 @@ namespace Bots {
 		PC->Blackboard->SetValueAsEnum(Name1, (uint8)EAthenaGamePhaseStep::Warmup);
 		PC->Blackboard->SetValueAsEnum(Name2, (uint8)EAthenaGamePhase::Warmup);
 
-		//PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
+		PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
 		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_AvoidThreat_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
 		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Leash_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
 		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Patrolling_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
@@ -214,6 +219,8 @@ namespace Bots {
 		PC->OnRep_Pawn();
 
 		PC->BrainComponent->RestartLogic();
+
+		bot->BT_MANG = BT_MANG2::ConstructBehaviorTree();
 
 		return Ret;
 	}

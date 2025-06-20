@@ -141,9 +141,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Abilities.h" />
+    <ClInclude Include="BehaviourTree_System.h" />
     <ClInclude Include="Bosses.h" />
     <ClInclude Include="BotNames.h" />
     <ClInclude Include="Bots.h" />
+    <ClInclude Include="BT_MANG2.h" />
     <ClInclude Include="Building.h" />
     <ClInclude Include="Creative.h" />
     <ClInclude Include="framework.h" />

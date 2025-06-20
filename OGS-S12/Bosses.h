@@ -3,6 +3,8 @@
 #include "Inventory.h"
 #include "Looting.h"
 
+#include "BehaviourTree_System.h"
+
 auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 auto Math = (UKismetMathLibrary*)UKismetMathLibrary::StaticClass()->DefaultObject;
 auto Gamemode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
@@ -17,6 +19,12 @@ std::vector<class FactionBot*> FactionBots{};
 class FactionBot
 {
 public:
+	// The behaviortree for the new ai system
+	BehaviorTree* BT_MANG = nullptr;
+
+	// The context that should be sent to the behaviortree
+	BTContext Context = {};
+
 	// The playercontroller of the bot
 	ABP_PhoebePlayerController_C* PC;
 
@@ -102,6 +110,9 @@ public:
 	{
 		this->Pawn = Pawn;
 		PC = (ABP_PhoebePlayerController_C*)Pawn->Controller;
+
+		Context.Controller = PC;
+
 		FactionBots.push_back(this);
 	}
 
@@ -367,7 +378,7 @@ public:
 };
 
 namespace Bosses {
-	inline void TickBots()
+	inline void TickBots(float DeltaTime)
 	{
 		auto block = [](FactionBot* bot, std::function<void(FactionBot* bot)> const& SetUnaware, bool Alerted, bool Threatened, bool LKP) {
 			BossesBTService_AIEvaluator Evaluator;
@@ -614,10 +625,17 @@ namespace Bosses {
 		};
 		for (auto bot : FactionBots)
 		{
-			auto Alerted = bot->PC->CurrentAlertLevel == EAlertLevel::Alerted;
-			auto Threatened = bot->PC->CurrentAlertLevel == EAlertLevel::Threatened;
-			auto LKP = bot->PC->CurrentAlertLevel == EAlertLevel::LKP;
-			block(bot, SetUnaware, Alerted, Threatened, LKP);
+			if (Globals::bUseLegacyAI_MANG) {
+				auto Alerted = bot->PC->CurrentAlertLevel == EAlertLevel::Alerted;
+				auto Threatened = bot->PC->CurrentAlertLevel == EAlertLevel::Threatened;
+				auto LKP = bot->PC->CurrentAlertLevel == EAlertLevel::LKP;
+				block(bot, SetUnaware, Alerted, Threatened, LKP);
+			}
+			else {
+				if (bot->BT_MANG) {
+					bot->BT_MANG->Tick(bot->Context);
+				}
+			}
 		}
 	}
 }

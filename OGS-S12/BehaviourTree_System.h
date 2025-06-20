@@ -1,0 +1,86 @@
+#pragma once
+#include "framework.h"
+
+struct BTContext
+{
+    AFortAthenaAIBotController* Controller;
+};
+
+class BTDecorator {
+public:
+    // All of these strings dont need to have a value its just good for runtime data
+    std::string Name;
+    std::string CachedDescription;
+    std::string NodeName;
+    
+public:
+    virtual bool Evaluate(BTContext Context) = 0;
+};
+
+class BTNode
+{
+private:
+    std::vector<BTDecorator*> Decorators;
+public:
+    virtual EBTNodeResult ChildTask(BTContext Context) = 0;
+public:
+    void AddDecorator(BTDecorator* Decorator) {
+        Decorators.push_back(Decorator);
+    }
+
+    EBTNodeResult Tick(BTContext& Context) {
+        // If a decorator fails then we shouldnt execute the task
+        for (BTDecorator* Decorator : Decorators) {
+            if (!Decorator->Evaluate(Context)) {
+                return EBTNodeResult::Failed;
+            }
+        }
+
+        // Run the task once all of the decorators pass
+        return ChildTask(Context);
+    }
+};
+
+class BTComposite_Selector
+{
+private:
+    std::vector<BTNode*> Children;
+
+public:
+    std::string Name;
+public:
+    void AddChild(BTNode* Node) {
+        Children.push_back(Node);
+    }
+
+    virtual EBTNodeResult Tick(BTContext Context) {
+        // Run all of the selectors children then if all fail then return faliure
+        for (BTNode* Child : Children)
+        {
+            EBTNodeResult Result = Child->Tick(Context);
+            if (Result == EBTNodeResult::Succeeded || Result == EBTNodeResult::InProgress)
+                return Result;
+        }
+        return EBTNodeResult::Failed;
+    }
+};
+
+class BehaviorTree
+{
+public:
+    std::string Name;
+
+    std::vector<BTComposite_Selector*> AllNodes;
+    BTComposite_Selector* RootNode = nullptr;
+    UBlackboardData* BlackboardAsset = nullptr;
+
+    void Tick(BTContext Context) {
+        if (RootNode)
+            RootNode->Tick(Context);
+    }
+
+    ~BehaviorTree() {
+        for (auto* Node : AllNodes)
+            delete Node;
+    }
+};
