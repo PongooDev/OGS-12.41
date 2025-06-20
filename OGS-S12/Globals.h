@@ -10,7 +10,7 @@ namespace Globals {
 	bool bBossesEnabled = true;
 	bool bBotsEnabled = true;
 
-	bool bUseLegacyAI_MANG = false; // Legacy is generally better at the moment, ill keep this in until the BT is better
+	bool bUseLegacyAI_MANG = true; // Keep this on true bro, i cba to do the new one atm maybe when i have nothing to do
 
 	bool LateGame = false;
 
