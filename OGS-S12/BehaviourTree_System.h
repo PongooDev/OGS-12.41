@@ -4,6 +4,7 @@
 struct BTContext
 {
     AFortAthenaAIBotController* Controller;
+    AFortPlayerPawnAthena* Pawn;
 };
 
 class BTDecorator {
@@ -17,15 +18,31 @@ public:
     virtual bool Evaluate(BTContext Context) = 0;
 };
 
+class BTService {
+public:
+    std::string Name;
+    std::string NodeName;
+
+    float Interval = 0.f;
+    float NextTickTime = 0.f;
+public:
+    virtual void TickService(BTContext Context) = 0;
+};
+
 class BTNode
 {
 private:
     std::vector<BTDecorator*> Decorators;
+    std::vector<BTService*> Services;
 public:
     virtual EBTNodeResult ChildTask(BTContext Context) = 0;
 public:
     void AddDecorator(BTDecorator* Decorator) {
         Decorators.push_back(Decorator);
+    }
+
+    void AddService(BTService* Service) {
+        Services.push_back(Service);
     }
 
     EBTNodeResult Tick(BTContext& Context) {
@@ -34,6 +51,10 @@ public:
             if (!Decorator->Evaluate(Context)) {
                 return EBTNodeResult::Failed;
             }
+        }
+
+        for (BTService* Service : Services) {
+            Service->TickService(Context);
         }
 
         // Run the task once all of the decorators pass

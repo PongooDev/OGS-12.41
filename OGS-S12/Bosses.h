@@ -112,6 +112,7 @@ public:
 		PC = (ABP_PhoebePlayerController_C*)Pawn->Controller;
 
 		Context.Controller = PC;
+		Context.Pawn = Pawn;
 
 		FactionBots.push_back(this);
 	}

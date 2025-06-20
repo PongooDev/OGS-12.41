@@ -191,6 +191,8 @@ namespace Bots {
 		PC->UseBlackboard(Blackboard, &PC->Blackboard);
 		PC->OnUsingBlackBoard(PC->Blackboard, Blackboard);
 
+		PC->Blackboard->SetValueAsBool(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_IsMovementBlocked")), false);
+
 		PC->BehaviorTree = BehaviorTree;
 		if (Globals::bUseLegacyAI_MANG) {
 			if (RunBehaviorTree(PC, StaticLoadObject<UBehaviorTree>("/Game/Athena/AI/MANG/BehaviorTree/BT_MANG2.BT_MANG2"))) {
@@ -212,6 +214,7 @@ namespace Bots {
 		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Leash_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
 		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Patrolling_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
 		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_DynamicBlueprint_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
+		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_CharacterLaunched_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
 
 		Ret->Mesh->AnimBlueprintGeneratedClass = StaticLoadObject<UClass>("/Game/Athena/AI/MANG/AnimSet/MANG_PatrolLayerAnimBP.MANG_PatrolLayerAnimBP_C");
 		Ret->OnRep_AnimBPOverride();
