@@ -260,9 +260,8 @@ namespace PC {
 
 				DeathInfo.bInitialized = true;
 
-				if (Misc::MaxPlayersOnTeam > 1 && DeadPC->MyFortPawn->bIsDBNO)
+				if (Misc::MaxPlayersOnTeam > 1 && !DeadPC->MyFortPawn->bIsDBNO)
 				{
-
 					DeathInfo.bDBNO = true;
 				}
 				else
