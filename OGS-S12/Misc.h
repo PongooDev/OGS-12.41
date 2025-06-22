@@ -66,7 +66,7 @@ namespace Misc {
 
     uint8 NextIdx = 3;
     int CurrentPlayersOnTeam = 0;
-    int MaxPlayersOnTeam = 1;
+    int MaxPlayersOnTeam;
 
     inline __int64 PickTeam(__int64 a1, unsigned __int8 a2, __int64 a3)
     {

@@ -258,31 +258,51 @@ namespace PC {
 					}
 				}
 
-				DeathInfo.bInitialized = true;
-
-				if (Misc::MaxPlayersOnTeam > 1 && !DeadPC->MyFortPawn->bIsDBNO)
+				if (!GameMode->bDBNOEnabled) 
 				{
-					DeathInfo.bDBNO = true;
-				}
-				else
-				{
-					DeathInfo.bDBNO = false;
+					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
+					DeathInfo.bInitialized = true;
+					DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
+					DeathInfo.DeathTags = DeathReport.Tags;
+					DeathInfo.Downer = KillerState;
+					DeathInfo.Distance = (KillerPawn ? KillerPawn->GetDistanceTo(DeadPC->Pawn) : ((AFortPlayerPawnAthena*)DeadPC->Pawn)->LastFallDistance);
+					PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
+					DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
+					DeadState->OnRep_DeathInfo();
 					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
 					DeadPC->bMarkedAlive = false;
 				}
-				DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
-				DeathInfo.DeathTags = DeathReport.Tags;
-				DeathInfo.Downer = KillerState;
-				DeathInfo.Distance = (KillerPawn ? KillerPawn->GetDistanceTo(DeadPC->Pawn) : ((AFortPlayerPawnAthena*)DeadPC->Pawn)->LastFallDistance);
-				PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
-				DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
-				DeadState->OnRep_DeathInfo();
+				else if (GameMode->bDBNOEnabled && DeadPC->MyFortPawn->bIsDying)
+				{
+					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
+					DeathInfo.bInitialized = true;
+					DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
+					DeathInfo.DeathTags = DeathReport.Tags;
+					DeathInfo.Downer = KillerState;
+					DeathInfo.Distance = (KillerPawn ? KillerPawn->GetDistanceTo(DeadPC->Pawn) : ((AFortPlayerPawnAthena*)DeadPC->Pawn)->LastFallDistance);
+					PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
+					DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
+					DeadState->OnRep_DeathInfo();
+				}
+				else if (GameMode->bDBNOEnabled && !DeadPC->MyFortPawn->bIsDying)
+				{
+					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
+					DeathInfo.bInitialized = true;
+					DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
+					DeathInfo.DeathTags = DeathReport.Tags;
+					DeathInfo.Downer = KillerState;
+					DeathInfo.Distance = (KillerPawn ? KillerPawn->GetDistanceTo(DeadPC->Pawn) : ((AFortPlayerPawnAthena*)DeadPC->Pawn)->LastFallDistance);
+					PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
+					DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
+					DeadState->OnRep_DeathInfo();
+					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
+					DeadPC->bMarkedAlive = false;
+				}
+
 			}
 
-			if (Misc::MaxPlayersOnTeam > 1)
+			if (GameMode->bDBNOEnabled)
 			{
-
-
 				for (int32 i = 0; i < GameState->Teams.Num(); i++)
 				{
 					AFortTeamInfo* TeamInfo = GameState->Teams[i];
@@ -290,6 +310,8 @@ namespace PC {
 
 					if (TeamInfo->Team != PlayerState->TeamIndex)
 						continue;
+
+					FDeathInfo& DeathInfo = DeadState->DeathInfo;
 
 					bool bIsTeamAlive = false;
 					for (int32 j = 0; j < TeamInfo->TeamMembers.Num(); j++)
