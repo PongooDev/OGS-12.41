@@ -14,7 +14,7 @@ namespace Globals {
 
 	bool LateGame = false;
 
-	bool Arena = false;
+	bool Arena = true;
 
 	int MaxBotsToSpawn = 100;
 	int MinPlayersForEarlyStart = 95;

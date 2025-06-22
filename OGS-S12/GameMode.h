@@ -311,6 +311,8 @@ namespace GameMode {
 		PlayerState->SeasonLevelUIDisplay = PC->XPComponent->CurrentLevel;
 		PlayerState->OnRep_SeasonLevelUIDisplay();
 
+		PC->GetQuestManager(ESubGame::Athena)->InitializeQuestAbilities(PC->Pawn);
+
 		UFortKismetLibrary::UpdatePlayerCustomCharacterPartsVisualization(PlayerState);
 		PlayerState->OnRep_CharacterData();
 

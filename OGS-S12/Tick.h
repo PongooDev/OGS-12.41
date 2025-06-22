@@ -12,6 +12,9 @@ namespace AccoladeTickingService {
 	bool AccoladeId_026_Survival_Default_Bronze = false;
 	bool AccoladeId_027_Survival_Default_Silver = false;
 	bool AccoladeId_028_Survival_Default_Gold = false;
+	//arena
+	bool Placement25 = false;
+	bool Placement5 = false;
 
 	// first player to land accolade
 	bool AccoladeId_018_First_Landing = false;
@@ -40,14 +43,18 @@ namespace AccoladeTickingService {
 			for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
 			{
 				Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_026_Survival_Default_Bronze.AccoladeId_026_Survival_Default_Bronze"));
+
 			}
 		}
+
+
 		if (AliveCount == 25 && !AccoladeId_027_Survival_Default_Silver)
 		{
 			AccoladeId_027_Survival_Default_Silver = true;
 			for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
 			{
 				Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_027_Survival_Default_Silver.AccoladeId_027_Survival_Default_Silver"));
+
 			}
 		}
 		if (AliveCount == 10 && !AccoladeId_028_Survival_Default_Gold)
@@ -57,6 +64,32 @@ namespace AccoladeTickingService {
 			{
 				Quests::GiveAccolade(GameMode->AlivePlayers[i], StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_028_Survival_Default_Gold.AccoladeId_028_Survival_Default_Gold"));
 			}
+		}
+
+		if (Globals::Arena)
+		{
+
+
+		    if (AliveCount == 25 && !Placement25)
+			{
+				Placement25 = true;
+				for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+				{
+					GameMode->AlivePlayers[i]->ClientReportTournamentPlacementPointsScored(25, 60);
+
+				}
+			}
+
+			else if (AliveCount == 5 && !Placement5)
+			{
+				Placement5 = true;
+				for (size_t i = 0; i < GameMode->AlivePlayers.Num(); i++)
+				{
+					GameMode->AlivePlayers[i]->ClientReportTournamentPlacementPointsScored(5, 30);
+
+				}
+			}
+
 		}
 
 		for (AFortPlayerControllerAthena* Player : GameMode->AlivePlayers) { 

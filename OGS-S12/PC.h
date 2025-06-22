@@ -203,7 +203,9 @@ namespace PC {
 					}
 
 					KillerState->ClientReportKill(DeadState);
+					KillerState->ClientReportTeamKill(KillerState->KillScore);
 					KillerState->OnRep_Kills();
+
 				}
 
 				DeadState->PawnDeathLocation = DeadPC->Pawn->K2_GetActorLocation();
@@ -256,8 +258,19 @@ namespace PC {
 					}
 				}
 
-				DeathInfo.bDBNO = DeadPC->MyFortPawn->bIsDBNO;
 				DeathInfo.bInitialized = true;
+
+				if (Misc::MaxPlayersOnTeam > 1 && DeadPC->MyFortPawn->bIsDBNO)
+				{
+
+					DeathInfo.bDBNO = true;
+				}
+				else
+				{
+					DeathInfo.bDBNO = false;
+					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
+					DeadPC->bMarkedAlive = false;
+				}
 				DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
 				DeathInfo.DeathTags = DeathReport.Tags;
 				DeathInfo.Downer = KillerState;
@@ -265,60 +278,106 @@ namespace PC {
 				PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
 				DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
 				DeadState->OnRep_DeathInfo();
-				if (DeadPC->MyFortPawn->bIsDBNO)
-				{
-					DeadPC->RespawnPlayerAfterDeath(true);
-				}
-				RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
-				DeadPC->bMarkedAlive = false;
 			}
 
-			bool AllDead = true;
-			for (auto Member : PlayerState->PlayerTeam->TeamMembers)
+			if (Misc::MaxPlayersOnTeam > 1)
 			{
-				if (Member != DeadPC && ((AFortPlayerControllerAthena*)Member)->bMarkedAlive)
+
+
+				for (int32 i = 0; i < GameState->Teams.Num(); i++)
 				{
-					AllDead = false;
+					AFortTeamInfo* TeamInfo = GameState->Teams[i];
+					if (!TeamInfo) continue;
+
+					if (TeamInfo->Team != PlayerState->TeamIndex)
+						continue;
+
+					bool bIsTeamAlive = false;
+					for (int32 j = 0; j < TeamInfo->TeamMembers.Num(); j++)
+					{
+						AFortPlayerControllerAthena* TeamMember = Cast<AFortPlayerControllerAthena>(TeamInfo->TeamMembers[j]);
+						if (!TeamMember || (TeamMember == DeadPC)) continue;
+
+						AFortPlayerPawn* TeamMemberPlayerPawn = Cast<AFortPlayerPawn>(TeamMember->MyFortPawn);
+						if (!TeamMemberPlayerPawn || TeamMemberPlayerPawn->bIsDying) continue;
+
+						bIsTeamAlive = true;
+						break;
+					}
+
+					if (!bIsTeamAlive)
+					{
+						for (int32 j = 0; j < TeamInfo->TeamMembers.Num(); j++)
+						{
+							AFortPlayerControllerAthena* TeamMember = Cast<AFortPlayerControllerAthena>(TeamInfo->TeamMembers[j]);
+							if (!TeamMember) continue;
+
+
+							FAthenaRewardResult Result;
+							UFortPlayerControllerAthenaXPComponent* XPComponent = TeamMember->XPComponent;
+							Result.TotalBookXpGained = XPComponent->TotalXpEarned;
+							Result.TotalSeasonXpGained = XPComponent->TotalXpEarned;
+
+							DeadPC->ClientSendEndBattleRoyaleMatchForPlayer(true, Result);
+
+							FAthenaMatchStats Stats;
+							FAthenaMatchTeamStats TeamStats;
+
+							if (DeadState)
+							{
+								DeadState->Place = GameMode->AliveBots.Num() + GameMode->AlivePlayers.Num();
+								DeadState->OnRep_Place();
+							}
+
+							for (size_t i = 0; i < 20; i++)
+							{
+								Stats.Stats[i] = 0;
+							}
+
+							Stats.Stats[3] = DeadState->KillScore;
+
+							TeamStats.Place = DeadState->Place;
+							TeamStats.TotalPlayers = GameState->TotalPlayers;
+
+							DeadPC->ClientSendMatchStatsForPlayer(Stats);
+							DeadPC->ClientSendTeamStatsForPlayer(TeamStats);
+							FDeathInfo& DeathInfo = DeadState->DeathInfo;
+						}
+					}
 					break;
 				}
 			}
+			else {
+	
+				FAthenaRewardResult Result;
+				UFortPlayerControllerAthenaXPComponent* XPComponent = DeadPC->XPComponent;
+				Result.TotalBookXpGained = XPComponent->TotalXpEarned;
+				Result.TotalSeasonXpGained = XPComponent->TotalXpEarned;
 
-			if (AllDead)
-			{
-				for (auto Member : PlayerState->PlayerTeam->TeamMembers)
+				DeadPC->ClientSendEndBattleRoyaleMatchForPlayer(true, Result);
+
+				FAthenaMatchStats Stats;
+				FAthenaMatchTeamStats TeamStats;
+
+				if (DeadState)
 				{
-					auto MemberPC = (AFortPlayerControllerAthena*)Member;
-
-					FAthenaRewardResult Result;
-					UFortPlayerControllerAthenaXPComponent* XPComponent = MemberPC->XPComponent;
-					Result.TotalBookXpGained = XPComponent->TotalXpEarned;
-					Result.TotalSeasonXpGained = XPComponent->TotalXpEarned;
-
-					DeadPC->ClientSendEndBattleRoyaleMatchForPlayer(true, Result);
-
-					FAthenaMatchStats Stats;
-					FAthenaMatchTeamStats TeamStats;
-
-					if (DeadState)
-					{
-						DeadState->Place = GameMode->AliveBots.Num() + GameMode->AlivePlayers.Num();
-						DeadState->OnRep_Place();
-					}
-
-					for (size_t i = 0; i < 20; i++)
-					{
-						Stats.Stats[i] = 0;
-					}
-
-					Stats.Stats[3] = DeadState->KillScore;
-
-					TeamStats.Place = DeadState->Place;
-					TeamStats.TotalPlayers = GameState->TotalPlayers;
-
-					DeadPC->ClientSendMatchStatsForPlayer(Stats);
-					DeadPC->ClientSendTeamStatsForPlayer(TeamStats);
-					FDeathInfo& DeathInfo = DeadState->DeathInfo;
+					DeadState->Place = GameMode->AliveBots.Num() + GameMode->AlivePlayers.Num();
+					DeadState->OnRep_Place();
 				}
+
+				for (size_t i = 0; i < 20; i++)
+				{
+					Stats.Stats[i] = 0;
+				}
+
+				Stats.Stats[3] = DeadState->KillScore;
+
+				TeamStats.Place = DeadState->Place;
+				TeamStats.TotalPlayers = GameState->TotalPlayers;
+
+				DeadPC->ClientSendMatchStatsForPlayer(Stats);
+				DeadPC->ClientSendTeamStatsForPlayer(TeamStats);
+				FDeathInfo& DeathInfo = DeadState->DeathInfo;
 			}
 
 			if (KillerState)
@@ -327,8 +386,8 @@ namespace PC {
 				{
 					if (DeathReport.KillerWeapon)
 					{
-						((AFortPlayerControllerAthena*)KillerState->Owner)->PlayWinEffects(KillerPawn, DeathReport.KillerWeapon, EDeathCause::Rifle, false);
-						((AFortPlayerControllerAthena*)KillerState->Owner)->ClientNotifyWon(KillerPawn, DeathReport.KillerWeapon, EDeathCause::Rifle);
+						((AFortPlayerControllerAthena*)KillerState->Owner)->PlayWinEffects(KillerPawn, DeathReport.KillerWeapon, PlayerState->DeathInfo.DeathCause, false);
+						((AFortPlayerControllerAthena*)KillerState->Owner)->ClientNotifyWon(KillerPawn, DeathReport.KillerWeapon, PlayerState->DeathInfo.DeathCause);
 					}
 
 					FAthenaRewardResult Result;
@@ -357,8 +416,18 @@ namespace PC {
 					GameState->OnRep_WinningTeam();
 
 					Quests::GiveAccolade(KillerPC, StaticLoadObject<UFortAccoladeItemDefinition>("/Game/Athena/Items/Accolades/AccoladeId_001_Victory.AccoladeId_001_Victory"));
+					KillerPC->ClientSendMatchStatsForPlayer(Stats);
+					KillerPC->ClientSendTeamStatsForPlayer(TeamStats);
+
+					GameState->WinningPlayerState = KillerState;
+					GameState->WinningTeam = KillerState->TeamIndex;
+					GameState->OnRep_WinningPlayerState();
+					GameState->OnRep_WinningTeam();
+
+					KillerPC->ClientReportTournamentPlacementPointsScored(1, 60);
 				}
 			}
+			
 		}
 
 		return ClientOnPawnDiedOG(DeadPC, DeathReport);
@@ -914,6 +983,8 @@ namespace PC {
 
 			std::thread(Misc::LateGameAircraftThread, BattleBusLocation).detach();
 		}
+
+
 
 		return OrginalServerSetInAircraft(PlayerState, bNewInAircraft);
 	}

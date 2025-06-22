@@ -178,6 +178,7 @@ public:
             }
 
             KillerState->ClientReportKill(PlayerState);
+            KillerState->ClientReportTeamKill(KillerState->KillScore); 
             KillerState->OnRep_Kills();
 
             /*auto KillerPawn = KillerPC->MyFortPawn;
