@@ -33,22 +33,14 @@ namespace Misc {
         //Log(Name);
 
         if (GameState->GamePhase <= EAthenaGamePhase::Warmup) {
-            if (Name.contains("BGA")) {
-                int NumExisting = CountActorsWithName(This->Name, This->Class);
-
-                if (NumExisting <= 1)
-                {
-                    //Log(Name);
-                    DuplicateActor(This);
-                }
+            if (Name.contains("BGA") || Name.contains("StaticGenerator")) {
+                This->bActorIsBeingDestroyed = true;
             }
-            else if (Name.contains("StaticGenerator")) {
-                int NumExisting = CountActorsWithName(This->Name, This->Class);
-
-                if (NumExisting <= 1)
-                {
-                    //Log(Name);
-                    DuplicateActor(This);
+        }
+        else {
+            if (Name.contains("BGA") || Name.contains("StaticGenerator")) {
+                if (This->bActorIsBeingDestroyed) {
+                    This->bActorIsBeingDestroyed = false;
                 }
             }
         }

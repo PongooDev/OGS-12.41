@@ -140,6 +140,9 @@ namespace Building {
 		if (Def)
 		{
 			auto& BuildingResourceAmountOverride = Actor->BuildingResourceAmountOverride;
+			if (!BuildingResourceAmountOverride.CurveTable) {
+				return OnDamageServerOG(Actor, Damage, DamageTags, Momentum, HitInfo, InstigatedBy, DamageCauser, EffectContext);
+			}
 			auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
 			FString CurveTableAssetPath = UKismetStringLibrary::Conv_NameToString(GameState->CurrentPlaylistInfo.BasePlaylist->ResourceRates.ObjectID.AssetPathName);

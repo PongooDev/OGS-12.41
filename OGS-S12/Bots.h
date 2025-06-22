@@ -176,9 +176,9 @@ namespace Bots {
 		}
 
 		PC->PathFollowingComponent->MyNavData = ((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData;
-		PC->PathFollowingComponent->OnNavDataRegistered(((UAthenaNavSystem*)UWorld::GetWorld()->NavigationSystem)->MainNavData);
-		PC->PathFollowingComponent->Activate(false);
-		PC->PathFollowingComponent->SetActive(true, false);
+		PC->PathFollowingComponent->OnNavDataRegistered(PC->PathFollowingComponent->MyNavData);
+		PC->PathFollowingComponent->Activate(true);
+		PC->PathFollowingComponent->SetActive(true, true);
 		PC->PathFollowingComponent->OnRep_IsActive();
 
 		if (!PC->BrainComponent) {
