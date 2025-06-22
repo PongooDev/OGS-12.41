@@ -1411,46 +1411,6 @@ namespace PlayerBots {
 
             bot->PlayerState->bIsABot = true;
         }
-        else {
-            if (Globals::bAllowBotsToBeOnPlayerTeam) {
-                uint8 TeamIdx = Misc::PickTeam(0, 0, 0);
-                AFortTeamInfo* Team = GameState->Teams[TeamIdx];
-                if (Team) {
-                    bot->PlayerState->bIsABot = false;
-
-                    uint8 OldTeamIdx = bot->PlayerState->TeamIndex;
-                    AFortPlayerStateAthena* TeamPS = nullptr;
-                    if (Team->TeamMembers.Num() > 0 && Team->TeamMembers[0]) {
-                        TeamPS = (AFortPlayerStateAthena*)Team->TeamMembers[0]->PlayerState;
-                    }
-                    if (TeamPS) {
-                        bot->PlayerState->SquadId = TeamPS->SquadId;
-                    }
-
-                    bot->PlayerState->TeamIndex = TeamIdx;
-                    bot->PlayerState->OnRep_TeamIndex(OldTeamIdx);
-                    bot->PlayerState->OnRep_SquadId();
-
-                    Team->TeamMembers.Add(bot->PC);
-                    bot->PlayerState->PlayerTeam = Team;
-
-                    bot->PlayerState->OnRep_PlayerTeam();
-
-                    bot->PlayerState->bIsABot = true;
-                }
-            }
-        }
-
-        FGameMemberInfo Member;
-        Member.MostRecentArrayReplicationKey = -1;
-        Member.ReplicationID = -1;
-        Member.ReplicationKey = -1;
-        Member.TeamIndex = bot->PlayerState->TeamIndex;
-        Member.SquadId = bot->PlayerState->SquadId;
-        Member.MemberUniqueId = bot->PlayerState->UniqueId;
-
-        GameState->GameMemberInfoArray.Members.Add(Member);
-        GameState->GameMemberInfoArray.MarkItemDirty(Member);
 
         PlayerBotArray.push_back(bot); // gotta do this so we can tick them all
         //Log("Bot Spawned With DisplayName: " + bot->DisplayName.ToString());
