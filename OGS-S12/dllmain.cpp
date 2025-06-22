@@ -11,6 +11,7 @@
 #include "Tick.h"
 #include "Bots.h"
 #include "Creative.h"
+#include "PE.h"
 
 void InitConsole() {
     AllocConsole();
@@ -46,6 +47,8 @@ void Hook() {
 
     Bots::Hook();
     Creative::Hook();
+
+    PE::Hook();
 
     MH_EnableHook(MH_ALL_HOOKS);
 }

@@ -138,6 +138,9 @@
     <ClInclude Include="BT_MANG2.h">
       <Filter>Resources\AI\BT_MANG</Filter>
     </ClInclude>
+    <ClInclude Include="PE.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

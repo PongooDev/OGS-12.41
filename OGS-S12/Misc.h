@@ -23,8 +23,8 @@ namespace Misc {
         return DispatchRequestOG(a1, a2, 3);
     }
 
-    __int64 (*K2_DestroyActorOG)(AActor* This, __int64 a2);
-    __int64 K2_DestroyActor(AActor* This, __int64 a2)
+    void (*K2_DestroyActorOG)(AActor* This, __int64 a2);
+    void K2_DestroyActor(AActor* This, __int64 a2)
     {
         AFortGameModeAthena* GameMode = (AFortGameModeAthena*)UWorld::GetWorld()->AuthorityGameMode;
         AFortGameStateAthena* GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
@@ -45,9 +45,7 @@ namespace Misc {
             }
         }
 
-        __int64 result = K2_DestroyActorOG(This, a2);
-        //Log(std::to_string(result));
-        return result;
+        return K2_DestroyActorOG(This, a2);
     }
 
     void LateGameAircraftThread(FVector BattleBusLocation)
