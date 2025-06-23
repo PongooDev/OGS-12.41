@@ -60,13 +60,13 @@ namespace GameMode {
 				Misc::NextIdx = Playlist->DefaultFirstTeam;
 				Misc::MaxPlayersOnTeam = Playlist->MaxSquadSize;
 
-				if (Misc::MaxPlayersOnTeam > 1)
-				{
-					GameMode->bDBNOEnabled = true;
-					GameState->bDBNOEnabledForGameMode = true;
-					GameState->bDBNODeathEnabled = true;
-					GameMode->bAllowSpectateAfterDeath = true;
-				}
+				bool bDBNO = Misc::MaxPlayersOnTeam > 1;
+
+				GameState->bDBNOEnabledForGameMode = bDBNO;
+				GameState->bDBNODeathEnabled = bDBNO;
+
+				GameMode->bAlwaysDBNO = bDBNO;
+				GameMode->bDBNOEnabled = bDBNO;
 
 				GameState->CurrentPlaylistInfo.BasePlaylist = Playlist;
 				GameState->CurrentPlaylistInfo.OverridePlaylist = Playlist;
