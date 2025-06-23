@@ -1058,6 +1058,9 @@ namespace PC {
 
 		Pawn->bIsDBNO = false;
 		PC->bMarkedAlive = true;
+		Pawn->bPlayedDying = false;
+		Pawn->bIsDying = false;
+		Pawn->DBNORevivalStacking = 0;
 		Pawn->OnRep_IsDBNO();
 		Pawn->SetHealth(30);
 		PlayerState->DeathInfo = {};
