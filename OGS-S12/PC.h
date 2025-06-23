@@ -283,6 +283,7 @@ namespace PC {
 					PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
 					DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
 					DeadState->OnRep_DeathInfo();
+					DeadPC->bMarkedAlive = false;
 				}
 				else if (GameMode->bDBNOEnabled && !DeadPC->MyFortPawn->bIsDying)
 				{
