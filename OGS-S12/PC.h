@@ -259,19 +259,26 @@ namespace PC {
 					}
 				}
 
-				bool AllDead = true;
-				for (auto Member : PlayerState->PlayerTeam->TeamMembers)
+				bool IsSolo = PlayerState->PlayerTeam->TeamMembers.Num() <= 1;
+				bool AllDead = IsSolo;
+
+				if (!IsSolo)
 				{
-					if (Member != DeadPC && ((AFortPlayerControllerAthena*)Member)->bMarkedAlive)
+					for (auto Member : PlayerState->PlayerTeam->TeamMembers)
 					{
-						AllDead = false;
-						break;
+						AFortPlayerControllerAthena* MemberPC = (AFortPlayerControllerAthena*)Member;
+						if (Member != DeadPC && MemberPC->bMarkedAlive && !((AFortPlayerPawnAthena*)MemberPC->Pawn)->bIsDBNO)
+						{
+							AllDead = false;
+							break;
+						}
 					}
 				}
 
-				if (!GameMode->bDBNOEnabled || AllDead || GameMode->bDBNOEnabled && !DeadPC->MyFortPawn->bIsDying)
+				if (!GameMode->bDBNOEnabled || AllDead)
 				{
-					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
+					Log("Dead!");
+					DeathInfo.bDBNO = false;
 					DeathInfo.bInitialized = true;
 					DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
 					DeathInfo.DeathTags = DeathReport.Tags;
@@ -283,8 +290,9 @@ namespace PC {
 					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
 					DeadPC->bMarkedAlive = false;
 				}
-				else if (GameMode->bDBNOEnabled && DeadPC->MyFortPawn->bIsDying && !AllDead)
+				else if (GameMode->bDBNOEnabled && !AllDead)
 				{
+					Log("Downed!");
 					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
 					DeathInfo.bInitialized = true;
 					DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
@@ -294,9 +302,7 @@ namespace PC {
 					PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
 					DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
 					DeadState->OnRep_DeathInfo();
-					DeadPC->bMarkedAlive = false;
 				}
-
 			}
 
 			if (GameMode->bDBNOEnabled)
@@ -324,7 +330,7 @@ namespace PC {
 						break;
 					}
 
-					if (!bIsTeamAlive)
+					if (true)
 					{
 						for (int32 j = 0; j < TeamInfo->TeamMembers.Num(); j++)
 						{
@@ -342,10 +348,17 @@ namespace PC {
 							FAthenaMatchStats Stats;
 							FAthenaMatchTeamStats TeamStats;
 
-							if (DeadState)
+							if (DeadState && !bIsTeamAlive)
 							{
-								DeadState->Place = GameMode->AliveBots.Num() + GameMode->AlivePlayers.Num();
-								DeadState->OnRep_Place();
+								for (int32 j = 0; j < TeamInfo->TeamMembers.Num(); j++) {
+									AFortPlayerControllerAthena* TeamMember = Cast<AFortPlayerControllerAthena>(TeamInfo->TeamMembers[j]);
+									if (!TeamMember) continue;
+
+									AFortPlayerStateAthena* MemberState = (AFortPlayerStateAthena*)TeamMember->PlayerState;
+
+									MemberState->Place = GameMode->AliveBots.Num() + GameMode->AlivePlayers.Num();
+									MemberState->OnRep_Place();
+								}
 							}
 
 							for (size_t i = 0; i < 20; i++)
