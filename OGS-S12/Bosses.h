@@ -315,6 +315,9 @@ public:
 				}
 
 				bot->CurrentAssignedDBNOBot->Pawn->bIsDBNO = false;
+				bot->Pawn->bPlayedDying = false;
+				bot->Pawn->bIsDying = false;
+				bot->Pawn->DBNORevivalStacking = 0;
 				bot->CurrentAssignedDBNOBot->Pawn->OnRep_IsDBNO();
 				bot->CurrentAssignedDBNOBot->Pawn->SetHealth(30);
 				PlayerState->DeathInfo = {};
