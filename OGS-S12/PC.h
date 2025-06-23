@@ -153,6 +153,7 @@ namespace PC {
 		GameState->OnRep_SafeZonePhase();
 	}
 
+	//this is deff skunked but it works as of now
 	inline void (*ClientOnPawnDiedOG)(AFortPlayerControllerAthena*, FFortPlayerDeathReport);
 	inline void ClientOnPawnDied(AFortPlayerControllerAthena* DeadPC, FFortPlayerDeathReport DeathReport)
 	{
@@ -211,7 +212,7 @@ namespace PC {
 				DeadState->PawnDeathLocation = DeadPC->Pawn->K2_GetActorLocation();
 				FDeathInfo& DeathInfo = DeadState->DeathInfo;
 
-				if (!KillerState->bIsABot)
+				if (!KillerState->bIsABot && (AFortPlayerControllerAthena*)KillerState->Owner)
 				{
 					AFortPlayerControllerAthena* KillerPC = (AFortPlayerControllerAthena*)KillerState->GetOwner();
 
@@ -258,7 +259,17 @@ namespace PC {
 					}
 				}
 
-				if (!GameMode->bDBNOEnabled) 
+				bool AllDead = true;
+				for (auto Member : PlayerState->PlayerTeam->TeamMembers)
+				{
+					if (Member != DeadPC && ((AFortPlayerControllerAthena*)Member)->bMarkedAlive)
+					{
+						AllDead = false;
+						break;
+					}
+				}
+
+				if (!GameMode->bDBNOEnabled || AllDead || GameMode->bDBNOEnabled && !DeadPC->MyFortPawn->bIsDying)
 				{
 					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
 					DeathInfo.bInitialized = true;
@@ -272,7 +283,7 @@ namespace PC {
 					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
 					DeadPC->bMarkedAlive = false;
 				}
-				else if (GameMode->bDBNOEnabled && DeadPC->MyFortPawn->bIsDying)
+				else if (GameMode->bDBNOEnabled && DeadPC->MyFortPawn->bIsDying && !AllDead)
 				{
 					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
 					DeathInfo.bInitialized = true;
@@ -283,20 +294,6 @@ namespace PC {
 					PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
 					DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
 					DeadState->OnRep_DeathInfo();
-					DeadPC->bMarkedAlive = false;
-				}
-				else if (GameMode->bDBNOEnabled && !DeadPC->MyFortPawn->bIsDying)
-				{
-					DeathInfo.bDBNO = DeadPC->MyFortPawn->bWasDBNOOnDeath;
-					DeathInfo.bInitialized = true;
-					DeathInfo.DeathLocation = DeadPC->Pawn->K2_GetActorLocation();
-					DeathInfo.DeathTags = DeathReport.Tags;
-					DeathInfo.Downer = KillerState;
-					DeathInfo.Distance = (KillerPawn ? KillerPawn->GetDistanceTo(DeadPC->Pawn) : ((AFortPlayerPawnAthena*)DeadPC->Pawn)->LastFallDistance);
-					PlayerState->DeathInfo.FinisherOrDowner = DeathReport.KillerPlayerState ? DeathReport.KillerPlayerState : DeadPC->PlayerState;
-					DeathInfo.DeathCause = DeadState->ToDeathCause(DeathInfo.DeathTags, DeathInfo.bDBNO);
-					DeadState->OnRep_DeathInfo();
-					RemoveFromAlivePlayers(GameMode, DeadPC, PlayerState, KillerPawn, DeathReport.KillerWeapon, (uint8)PlayerState->DeathInfo.DeathCause, 0);
 					DeadPC->bMarkedAlive = false;
 				}
 
@@ -1047,6 +1044,7 @@ namespace PC {
 		}
 
 		Pawn->bIsDBNO = false;
+		PC->bMarkedAlive = true;
 		Pawn->OnRep_IsDBNO();
 		Pawn->SetHealth(30);
 		PlayerState->DeathInfo = {};
