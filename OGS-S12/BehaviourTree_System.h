@@ -66,6 +66,7 @@ class BTComposite_Selector
 {
 private:
     std::vector<BTNode*> Children;
+    std::vector<BTService*> Services;
 
 public:
     std::string Name;
@@ -75,6 +76,10 @@ public:
     }
 
     virtual EBTNodeResult Tick(BTContext Context) {
+        for (BTService* Service : Services) {
+            Service->TickService(Context);
+        }
+
         // Run all of the selectors children then if all fail then return faliure
         for (BTNode* Child : Children)
         {
