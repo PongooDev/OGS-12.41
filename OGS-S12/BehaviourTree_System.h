@@ -105,6 +105,15 @@ public:
             RootNode->Tick(Context);
     }
 
+    BTComposite_Selector* FindSelectorByName(std::string Name) {
+        for (BTComposite_Selector* Selector : AllNodes) {
+            if (Selector->Name == Name) {
+                return Selector;
+            }
+        }
+        return nullptr;
+    }
+
     ~BehaviorTree() {
         for (auto* Node : AllNodes)
             delete Node;

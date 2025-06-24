@@ -10,12 +10,12 @@ namespace Globals {
 	bool bBossesEnabled = true;
 	bool bBotsEnabled = true;
 
-	bool bUseLegacyAI_MANG = true; // Keep this on true bro, i cba to do the new one atm maybe when i have nothing to do
+	bool bUseLegacyAI_MANG = false; // Keep this on true bro, i cba to do the new one atm maybe when i have nothing to do
 
 	bool LateGame = false;
 
 	bool Arena = false;
 
 	int MaxBotsToSpawn = 100;
-	int MinPlayersForEarlyStart = 95;
+	int MinPlayersForEarlyStart = 2;
 }
