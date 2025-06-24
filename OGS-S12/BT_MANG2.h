@@ -2,6 +2,7 @@
 #include "framework.h"
 
 #include "BehaviourTree_System.h"
+#include "Bosses.h"
 
 // btw if you didnt know BT_MANG2 the 2 means 2.0 (atleast i think so)
 
@@ -36,26 +37,26 @@ namespace BT_MANG2_Tasks {
 		}
 	};
 
-	class BTTask_SteerMovement : public BTNode {
+	class BTTask_StartPatrolling : public BTNode {
+	public:
+		BTComposite_Selector* SelectorToRun = nullptr;
 	public:
 		virtual EBTNodeResult ChildTask(BTContext Context) override {
-			auto* BB = Context.Controller->Blackboard;
-			FVector SteerDirection = BB->GetValueAsVector(UKismetStringLibrary::Conv_StringToName(L"AIEvaluator_CharacterLaunched_SteerDirection"));
-			if (!SteerDirection.IsZero()) {
-				EPathFollowingRequestResult Result = Context.Controller->MoveToLocation(SteerDirection, 10.f, true, false, false, true, nullptr, true);
-				if (Result == EPathFollowingRequestResult::Failed) {
-					return EBTNodeResult::Failed;
-				}
-				else if (Result == EPathFollowingRequestResult::RequestSuccessful) {
-					return EBTNodeResult::InProgress;
-				}
-				else if (Result == EPathFollowingRequestResult::AlreadyAtGoal) {
-					return EBTNodeResult::Succeeded;
-				}
+			if (SelectorToRun) {
+				return SelectorToRun->Tick(Context);
 			}
 			return EBTNodeResult::Failed;
 		}
 	};
+
+	namespace BTComposite_Selector_Patrolling {
+		class BTTask_SetNextPatrolPoint : public BTNode {
+		public:
+			virtual EBTNodeResult ChildTask(BTContext Context) override {
+				
+			}
+		};
+	}
 }
 
 namespace BT_MANG_Decorators {
@@ -81,23 +82,22 @@ namespace BT_MANG_Decorators {
 		}
 	};
 
-	class BTDecorator_Blackboard_21 : public BTDecorator {
-	public:
-		BTDecorator_Blackboard_21() {
-			Name = "BTDecorator_Blackboard_21";
-			CachedDescription = "AIEvaluator_CharacterLaunched_ExecutionStatus Is Greater Than Or Equal To Execution Pending";
-			NodeName = "Is Character being launched?";
-		}
-
-		virtual bool Evaluate(BTContext Context) override {
-			auto* BB = Context.Controller->Blackboard;
-			uint8 ExecStatus = BB->GetValueAsEnum(UKismetStringLibrary::Conv_StringToName(L"AIEvaluator_CharacterLaunched_ExecutionStatus"));
-			if (ExecStatus >= 3) {
-				return true;
+	namespace BTComposite_Selector_Patrolling {
+		class BTDecorator_Global_ShouldPatrol : public BTDecorator {
+		public:
+			virtual bool Evaluate(BTContext Context) override {
+				auto* MANGContext = static_cast<BT_MANG_Context*>(&Context);
+				auto* BB = Context.Controller->Blackboard;
+				uint8 ExecStatus = BB->GetValueAsEnum(UKismetStringLibrary::Conv_StringToName(L"AIEvaluator_Patrolling_ExecutionStatus"));
+				if (ExecStatus >= 3 && MANGContext->bot && MANGContext->bot->PatrolPath->PatrolPoints.Num() != 0) {
+					Log("wow!");
+					return true;
+				}
+				Log("EEEEEEEEE");
+				return false;
 			}
-			return false;
-		}
-	};
+		};
+	}
 }
 
 namespace BT_MANG_Services {
@@ -137,7 +137,12 @@ namespace BT_MANG2 {
 		auto* Tree = new BehaviorTree();
 
 		auto* RootSelector = new BTComposite_Selector();
-		RootSelector->Name = "BTComposite_Selector_2";
+		RootSelector->Name = "BTComposite_Selector_Root";
+
+		{
+			auto* Selector = new BTComposite_Selector();
+			Selector->Name = "BTComposite_Selector_Patrolling";
+		}
 
 		{
 			auto* Task = new BT_MANG2_Tasks::BTTask_Wait(2.f);
@@ -147,9 +152,8 @@ namespace BT_MANG2 {
 		}
 
 		{
-			auto* Task = new BT_MANG2_Tasks::BTTask_SteerMovement();
-			Task->AddDecorator(new BT_MANG_Decorators::BTDecorator_Blackboard_21());
-			Task->AddService(new BT_MANG_Services::BTService_AIEvaluator_4());
+			auto* Task = new BT_MANG2_Tasks::BTTask_StartPatrolling();
+			Task->SelectorToRun = Tree->FindSelectorByName("BTComposite_Selector_Patrolling");
 			RootSelector->AddChild(Task);
 		}
 

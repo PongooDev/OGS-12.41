@@ -15,6 +15,11 @@ enum class EBossesStrafeType {
 	StrafeRight
 };
 
+struct BT_MANG_Context : BTContext
+{
+	class FactionBot* bot;
+};
+
 std::vector<class FactionBot*> FactionBots{};
 class FactionBot
 {
@@ -23,7 +28,7 @@ public:
 	BehaviorTree* BT_MANG = nullptr;
 
 	// The context that should be sent to the behaviortree
-	BTContext Context = {};
+	BT_MANG_Context Context = {};
 
 	// The playercontroller of the bot
 	ABP_PhoebePlayerController_C* PC;
@@ -113,6 +118,7 @@ public:
 
 		Context.Controller = PC;
 		Context.Pawn = Pawn;
+		Context.bot = this;
 
 		FactionBots.push_back(this);
 	}

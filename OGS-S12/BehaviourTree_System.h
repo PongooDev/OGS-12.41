@@ -66,6 +66,7 @@ class BTComposite_Selector
 {
 private:
     std::vector<BTNode*> Children;
+    std::vector<BTDecorator*> Decorators;
     std::vector<BTService*> Services;
 
 public:
@@ -75,7 +76,22 @@ public:
         Children.push_back(Node);
     }
 
+    void AddDecorator(BTDecorator* Decorator) {
+        Decorators.push_back(Decorator);
+    }
+
+    void AddService(BTService* Service) {
+        Services.push_back(Service);
+    }
+
     virtual EBTNodeResult Tick(BTContext Context) {
+        // If a global selector decorator fails we shouldnt execute anything inside of the selector (shouldnt be on the root)
+        for (BTDecorator* Decorator : Decorators) {
+            if (!Decorator->Evaluate(Context)) {
+                return EBTNodeResult::Failed;
+            }
+        }
+
         for (BTService* Service : Services) {
             Service->TickService(Context);
         }
@@ -100,11 +116,6 @@ public:
     BTComposite_Selector* RootNode = nullptr;
     UBlackboardData* BlackboardAsset = nullptr;
 
-    void Tick(BTContext Context) {
-        if (RootNode)
-            RootNode->Tick(Context);
-    }
-
     BTComposite_Selector* FindSelectorByName(std::string Name) {
         for (BTComposite_Selector* Selector : AllNodes) {
             if (Selector->Name == Name) {
@@ -112,6 +123,11 @@ public:
             }
         }
         return nullptr;
+    }
+
+    void Tick(BTContext Context) {
+        if (RootNode)
+            RootNode->Tick(Context);
     }
 
     ~BehaviorTree() {
