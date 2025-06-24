@@ -382,13 +382,13 @@ namespace Looting {
             PickupSourceTypeFlags = EFortPickupSourceTypeFlag::FloorLoot;
         }
 
-        if (!Globals::LateGame)
+        if (!Globals::LateGame || !Globals::Arsenal)
         {
             BuildingContainer->bAlreadySearched = true;
             BuildingContainer->SearchBounceData.SearchAnimationCount++;
             BuildingContainer->OnRep_bAlreadySearched();
         }
-        else if (Globals::LateGame && SearchLootTierGroup == Loot_AthenaFloorLoot_Warmup)
+        else if (Globals::LateGame && SearchLootTierGroup == Loot_AthenaFloorLoot_Warmup || Globals::Arsenal && SearchLootTierGroup == Loot_AthenaFloorLoot_Warmup)
         {
             BuildingContainer->bAlreadySearched = true;
             BuildingContainer->SearchBounceData.SearchAnimationCount++;
@@ -423,7 +423,7 @@ namespace Looting {
             }
         }
 
-        if (!Globals::LateGame)
+        if (!Globals::LateGame || !Globals::Arsenal)
         {
 
             if (SearchLootTierGroup == Loot_Treasure)

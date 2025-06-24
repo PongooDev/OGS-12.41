@@ -1095,7 +1095,28 @@ namespace PC {
 		PC->MyFortPawn->EquipWeaponDefinition((UFortWeaponItemDefinition*)SwappingItemDef, SwappingItemEntry->ItemGuid);
 	}
 
+	void ServerClientIsReadyToRespawn(AFortPlayerControllerAthena* PC)
+	{
+		auto PlayerState = (AFortPlayerStateAthena*)PC->PlayerState;
 
+		auto GameMode = (AFortGameModeAthena*)UEngine::GetEngine()->GameViewport->World->AuthorityGameMode;
+
+		if (PlayerState->RespawnData.bRespawnDataAvailable && PlayerState->RespawnData.bServerIsReady)
+		{
+			PlayerState->RespawnData.bClientIsReady = true;
+
+			FTransform Transform{};
+			Transform.Translation = PlayerState->RespawnData.RespawnLocation;
+			Transform.Scale3D = FVector{ 1,1,1 };
+			auto Pawn = (AFortPlayerPawnAthena*)GameMode->SpawnDefaultPawnAtTransform(PC, Transform);
+			PC->Possess(Pawn);
+			Pawn->SetMaxHealth(100);
+			Pawn->SetHealth(100);
+			Pawn->SetMaxShield(100);
+			Pawn->SetShield(0);
+			PC->RespawnPlayerAfterDeath(true);
+		}
+	}
 
 	void ServerReturnToMainMenu(AFortPlayerControllerAthena* PC)
 	{
@@ -1183,6 +1204,8 @@ namespace PC {
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x10D, ServerAcknowledgePossession, (LPVOID*)&ServerAcknowledgePossessionOG);
 
 		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x26B, ServerLoadingScreenDropped, (LPVOID*)&ServerLoadingScreenDroppedOG);
+
+		HookVTable(AFortPlayerControllerAthena::GetDefaultObj(), 0x4F0, ServerClientIsReadyToRespawn, nullptr);
 
 		HookVTable(UFortControllerComponent_Aircraft::GetDefaultObj(), 0x89, ServerAttemptAircraftJump, nullptr);
 

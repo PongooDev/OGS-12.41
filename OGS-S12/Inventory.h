@@ -572,6 +572,9 @@ namespace Inventory {
 
 	inline void ServerAttemptInventoryDrop(AFortPlayerControllerAthena* PC, FGuid ItemGuid, int Count, bool bTrash)
 	{
+		if (Globals::Arsenal)
+			return;
+
 		FFortItemEntry* Entry = FindEntry(PC, ItemGuid);
 		AFortPlayerPawn* Pawn = (AFortPlayerPawn*)PC->Pawn;
 		SpawnPickup(Entry->ItemDefinition, Count, Entry->LoadedAmmo, PC->Pawn->K2_GetActorLocation(), EFortPickupSourceTypeFlag::Player, EFortPickupSpawnSource::Unset, Pawn);

@@ -13,7 +13,15 @@ namespace Globals {
 	bool bUseLegacyAI_MANG = true; // Keep this on true bro, I am NOT doing this!
 
 	bool LateGame = false;
-
+	bool Automatics = false;
+	bool BattleLab = false;
+	bool Blitz = false;
+	bool StormKing = false;
+	bool Arsenal = true;
+	bool TeamRumble = false;
+	bool SolidGold = false;
+	bool UnVaulted = false;
+	bool Siphon = false;
 	bool Arena = false;
 
 	int MaxBotsToSpawn = 100;

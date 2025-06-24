@@ -37,6 +37,42 @@ namespace GameMode {
 				else if (Globals::Arena) {
 					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Showdown/Playlist_ShowdownAlt_Solo.Playlist_ShowdownAlt_Solo");
 				}
+				else if (Globals::Automatics)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Auto/Playlist_Auto_Solo.Playlist_Auto_Solo");
+				}
+				else if (Globals::BattleLab)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/BattleLab/Playlist_BattleLab.Playlist_BattleLab");
+				}
+				else if (Globals::Blitz)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Blitz/Playlist_Blitz_Solo.Playlist_Blitz_Solo");
+				}
+				else if (Globals::StormKing)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/DADBRO/Playlist_DADBRO_Squads.Playlist_DADBRO_Squads");
+				}
+				else if (Globals::Arsenal)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/gg/Playlist_Gg_Reverse.Playlist_Gg_Reverse");
+				}
+				else if (Globals::TeamRumble)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Respawn/Playlist_Respawn_Solo.Playlist_Respawn_Solo");
+				}
+				else if (Globals::SolidGold)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/SolidGold/Playlist_SolidGold_Solo.Playlist_SolidGold_Solo");
+				}
+				else if (Globals::UnVaulted)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Unvaulted/Playlist_Unvaulted_Solo.Playlist_Unvaulted_Solo");
+				}
+				else if (Globals::Siphon)
+				{
+					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Vamp/Playlist_Vamp_Solo.Playlist_Vamp_Solo");
+				}
 				else {
 					Playlist = StaticLoadObject<UFortPlaylistAthena>("/Game/Athena/Playlists/Playlist_DefaultSquad.Playlist_DefaultSquad");
 				}
