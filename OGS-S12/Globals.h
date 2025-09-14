@@ -17,7 +17,7 @@ namespace Globals {
 	bool BattleLab = false;
 	bool Blitz = false;
 	bool StormKing = false;
-	bool Arsenal = true;
+	bool Arsenal = false;
 	bool TeamRumble = false;
 	bool SolidGold = false;
 	bool UnVaulted = false;
@@ -25,5 +25,5 @@ namespace Globals {
 	bool Arena = false;
 
 	int MaxBotsToSpawn = 100;
-	int MinPlayersForEarlyStart = 2;
+	int MinPlayersForEarlyStart = 90;
 }

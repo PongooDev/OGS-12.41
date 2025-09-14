@@ -63,6 +63,7 @@ TArray<FVector> PickedSupplyDropLocations;
 TArray<APlayerController*> GivenLootPlayers;
 
 static TArray<AActor*> PlayerStarts;
+static TArray<AActor*> BuildingFoundations;
 
 bool bFirstElimTriggered = false;
 bool bFirstEliminated = false;
@@ -128,9 +129,13 @@ void HookVTable(void* Base, int Idx, void* Detour, void** OG)
 	VirtualProtect(&VTable[Idx], sizeof(void*), oldProtection, NULL);
 }
 
-// pasted shit from ploosh wow
+static inline void* _NpFH = nullptr;
+
+#define callOG(_Tr, _Pt, _Th, ...) ([&](){ auto _Fn = StaticLoadObject<UFunction>(_Pt "." # _Th); _Fn->ExecFunction = (UFunction::FNativeFuncPtr) _Th##OG; _Tr->_Th(##__VA_ARGS__); _Fn->ExecFunction = (UFunction::FNativeFuncPtr) _Th; })()
+#define callOGWithRet(_Tr, _Pt, _Th, ...) ([&](){ auto _Fn = StaticLoadObject<UFunction>(_Pt "." # _Th); _Fn->ExecFunction = (UFunction::FNativeFuncPtr) _Th##OG; auto _Rt = _Tr->_Th(##__VA_ARGS__); _Fn->ExecFunction = (UFunction::FNativeFuncPtr) _Th; return _Rt; })()
+
 template <typename T = void*>
-__forceinline static void ExecHook(UFunction* func, void* detour, T& og = nullptr)
+__forceinline static void ExecHook(UFunction* func, void* detour, T& og = _NpFH)
 {
 	if (!func)
 		return;
@@ -194,6 +199,10 @@ public:
 		}
 
 		return MostRecentPropertyAddress ? *(T*)MostRecentPropertyAddress : TempVal;
+	}
+
+	void IncrementCode() {
+		Code = (uint8_t*)(__int64(Code) + (bool)Code);
 	}
 };
 

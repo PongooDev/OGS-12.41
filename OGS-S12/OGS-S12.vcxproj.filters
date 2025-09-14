@@ -31,15 +31,15 @@
     <Filter Include="Resources\AI\BT_MANG">
       <UniqueIdentifier>{08292312-9a63-4daa-8ad9-9f6cc7025541}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Hooks">
+      <UniqueIdentifier>{7d7d80b9-c9d8-4488-802d-686f4e2ff887}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Globals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GameMode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Inventory.h">
@@ -140,6 +140,9 @@
     </ClInclude>
     <ClInclude Include="PE.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GameMode.h">
+      <Filter>Hooks</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

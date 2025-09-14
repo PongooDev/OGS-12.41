@@ -202,7 +202,7 @@ namespace Bots {
 				Log("Bye!");
 			}
 			PC->BlueprintOnBehaviorTreeStarted();
-		}*/
+		}
 
 		static auto Name1 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhaseStep"));
 		static auto Name2 = UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_Global_GamePhase"));
@@ -217,7 +217,7 @@ namespace Bots {
 		PC->Blackboard->SetValueAsEnum(UKismetStringLibrary::Conv_StringToName(TEXT("AIEvaluator_CharacterLaunched_ExecutionStatus")), (uint8)EExecutionStatus::ExecutionAllowed);
 
 		Ret->Mesh->AnimBlueprintGeneratedClass = StaticLoadObject<UClass>("/Game/Athena/AI/MANG/AnimSet/MANG_PatrolLayerAnimBP.MANG_PatrolLayerAnimBP_C");
-		Ret->OnRep_AnimBPOverride();
+		Ret->OnRep_AnimBPOverride();*/
 
 		PC->OnRep_Pawn();
 

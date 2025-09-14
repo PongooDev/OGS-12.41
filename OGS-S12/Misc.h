@@ -95,7 +95,7 @@ namespace Misc {
         MH_CreateHook((LPVOID)(ImageBase + 0x1e23840), nullFunc, nullptr);
         MH_CreateHook((LPVOID)(ImageBase + 0x2d95dc0), nullFunc, nullptr);
 
-        MH_CreateHook((LPVOID)(ImageBase + 0x7F0220), K2_DestroyActor, (LPVOID*)&K2_DestroyActorOG);
+        //MH_CreateHook((LPVOID)(ImageBase + 0x7F0220), K2_DestroyActor, (LPVOID*)&K2_DestroyActorOG);
 
         MH_CreateHook((LPVOID)(ImageBase + 0x18E6B20), PickTeam, nullptr);
 

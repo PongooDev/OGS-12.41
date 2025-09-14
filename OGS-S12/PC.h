@@ -52,9 +52,9 @@ namespace PC {
 
 			Vehicles::SpawnVehicles();
 
-			if (true) {
+			/*if (true) {
 				PhantomBoothSpawner::SpawnBooths();
-			}
+			}*/
 
 			TArray<AActor*> VendingMachinesArray;
 
