@@ -66,13 +66,16 @@ namespace GameMode {
 			GameMode->GameSession->bRequiresPushToTalk = false;
 			GameMode->GameSession->SessionName = UKismetStringLibrary::Conv_StringToName(FString(L"GameSession"));
 
+			GameMode->ActorsToClear.Free();
+			GameMode->bDisableGCOnServerDuringMatch = true;
+
 			Misc::MaxPlayersOnTeam = Playlist->MaxSquadSize;
 			Misc::NextIdx = Playlist->DefaultFirstTeam;
 
 			for (auto& Level : Playlist->AdditionalLevels)
 			{
 				bool Success = false;
-				//ULevelStreamingDynamic::LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), Level, FVector(), FRotator(), &Success, FString());
+				ULevelStreamingDynamic::LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), Level, FVector(), FRotator(), &Success, FString());
 				FAdditionalLevelStreamed level{};
 				level.bIsServerOnly = false;
 				level.LevelName = Level.ObjectID.AssetPathName;
@@ -84,7 +87,7 @@ namespace GameMode {
 			for (auto& Level : Playlist->AdditionalLevelsServerOnly)
 			{
 				bool Success = false;
-				//ULevelStreamingDynamic::LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), Level, FVector(), FRotator(), &Success, FString());
+				ULevelStreamingDynamic::LoadLevelInstanceBySoftObjectPtr(UWorld::GetWorld(), Level, FVector(), FRotator(), &Success, FString());
 				FAdditionalLevelStreamed level{};
 				level.bIsServerOnly = true;
 				level.LevelName = Level.ObjectID.AssetPathName;
@@ -96,6 +99,13 @@ namespace GameMode {
 			GameState->OnRep_AdditionalPlaylistLevelsStreamed();
 			GameState->OnFinishedStreamingAdditionalPlaylistLevel();
 			GameMode->HandleAllPlaylistLevelsVisible();
+
+			ShowFoundation(StaticLoadObject<ABuildingFoundation>("/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.LF_Athena_POI_19x19_2"));
+			ShowFoundation(StaticLoadObject<ABuildingFoundation>("/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.BP_Jerky_Head6_18"));
+			ShowFoundation(StaticLoadObject<ABuildingFoundation>("/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.BP_Jerky_Head5_14"));
+			ShowFoundation(StaticLoadObject<ABuildingFoundation>("/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.BP_Jerky_Head3_8"));
+			ShowFoundation(StaticLoadObject<ABuildingFoundation>("/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.BP_Jerky_Head_2"));
+			ShowFoundation(StaticLoadObject<ABuildingFoundation>("/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.BP_Jerky_Head4_11"));
 
 			Log("Setup Playlist: " + Playlist->GetName());
 		}
