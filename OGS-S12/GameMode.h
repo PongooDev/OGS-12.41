@@ -13,13 +13,11 @@ namespace GameMode {
 		static inline UObject* JerkyLoader;
 	}
 
-	bool ReadyToStartMatch(UObject* Context, FFrame& Stack, bool* Ret)
+	bool ReadyToStartMatch(AFortGameModeAthena* GameMode)
 	{
-		Stack.IncrementCode();
-		AFortGameModeAthena* GameMode = (AFortGameModeAthena*)Context;
 		if (!GameMode) {
 			Log("ReadyToStartMatch: GameMode doesent exist!");
-			return *Ret = false;
+			return false;
 		}
 		auto GameState = (AFortGameStateAthena*)UWorld::GetWorld()->GameState;
 
@@ -41,7 +39,7 @@ namespace GameMode {
 			}
 			if (!Playlist) {
 				Log("Playlist Not Found!");
-				return *Ret = false;
+				return false;
 			}
 
 			GameState->CurrentPlaylistInfo.BasePlaylist = Playlist;
@@ -108,6 +106,10 @@ namespace GameMode {
 			ShowFoundation(StaticLoadObject<ABuildingFoundation>("/Game/Athena/Apollo/Maps/Apollo_POI_Foundations.Apollo_POI_Foundations.PersistentLevel.BP_Jerky_Head4_11"));
 
 			Log("Setup Playlist: " + Playlist->GetName());
+		}
+
+		if (!GameState->MapInfo) {
+			return false;
 		}
 
 		if (!bInitialized) {
@@ -255,7 +257,7 @@ namespace GameMode {
 			UGameplayStatics::GetAllActorsOfClass(UWorld::GetWorld(), ABuildingFoundation::StaticClass(), &BuildingFoundations);
 			UGameplayStatics::GetAllActorsOfClass(UWorld::GetWorld(), AFortPlayerStartWarmup::StaticClass(), &PlayerStarts);
 
-			return *Ret = true;
+			return true;
 		}
 		else {
 			GameState->WarmupCountdownEndTime = CurrentTime + WarmupTime;
@@ -264,7 +266,7 @@ namespace GameMode {
 			GameMode->WarmupEarlyCountdownDuration = WarmupTime;
 		}
 
-		return *Ret = false;
+		return false;
 	}
 
 	inline APawn* SpawnDefaultPawnFor(AFortGameModeAthena* GameMode, AFortPlayerController* Player, AActor* StartingLoc)
@@ -509,8 +511,8 @@ namespace GameMode {
 	}
 
 	void Hook() {
-		//MH_CreateHook((LPVOID)(ImageBase + 0x4640A30), ReadyToStartMatch, (LPVOID*)&ReadyToStartMatchOG);
-		ExecHook(StaticLoadObject<UFunction>("/Script/Engine.GameMode.ReadyToStartMatch"), ReadyToStartMatch);
+		MH_CreateHook((LPVOID)(ImageBase + 0x4640A30), ReadyToStartMatch, nullptr);
+		//ExecHook(StaticLoadObject<UFunction>("/Script/Engine.GameMode.ReadyToStartMatch"), ReadyToStartMatch);
 		//HookVTable(AFortGameModeBR::GetDefaultObj(), 0x101, ReadyToStartMatch, nullptr);
 
 		MH_CreateHook((LPVOID)(ImageBase + 0x18F6250), SpawnDefaultPawnFor, nullptr);
