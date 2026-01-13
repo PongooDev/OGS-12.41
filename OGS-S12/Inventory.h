@@ -164,7 +164,6 @@ namespace Inventory {
 
 	inline void GiveItem(AFortPlayerController* PC, UFortItemDefinition* Def, int Count, int LoadedAmmo)
 	{
-
 		UFortWorldItem* Item = Cast<UFortWorldItem>(Def->CreateTemporaryItemInstanceBP(Count, 0));
 		Item->SetOwningControllerForTemporaryItem(PC);
 		Item->OwnerInventory = PC->WorldInventory;

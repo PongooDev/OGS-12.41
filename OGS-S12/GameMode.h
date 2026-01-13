@@ -110,10 +110,6 @@ namespace GameMode {
 			Log("Setup Playlist: " + Playlist->GetName());
 		}
 
-		if (!GameState->MapInfo) {
-			return *Ret = false;
-		}
-
 		if (!bInitialized) {
 			bInitialized = true;
 
